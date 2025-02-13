@@ -1,32 +1,31 @@
 import 'dart:io';
-
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart';
 import 'package:shelf_router/shelf_router.dart';
+import 'package:shelf_cors_headers/shelf_cors_headers.dart';
 
-// Configure routes.
+import '../bin/routes/PersonRoutes.dart';
+import '../bin/routes/VehicleRoutes.dart';
+import '../bin/routes/ParkingRoutes.dart';
+import '../bin/routes/ParkingSpace.dart';
+
+// Skapa en router och inkludera alla route-filer
 final _router = Router()
-  ..get('/', _rootHandler)
-  ..get('/echo/<message>', _echoHandler);
+  ..mount('/persons', PersonRoutes().router)
+  ..mount('/vehicles', VehicleRoutes().router)
+  ..mount('/parkings', ParkingRoutes().router)
+  ..mount('/parkingspaces', ParkingSpaceRoutes().router);
 
-Response _rootHandler(Request req) {
-  return Response.ok('Hello, World!\n');
-}
-
-Response _echoHandler(Request request) {
-  final message = request.params['message'];
-  return Response.ok('$message\n');
-}
+// Middleware för att logga och hantera CORS
+final handler = Pipeline()
+    .addMiddleware(logRequests())
+    .addMiddleware(corsHeaders()) // Tillåter API-anrop från frontend
+    .addHandler(_router);
 
 void main(List<String> args) async {
-  // Use any available host or container IP (usually `0.0.0.0`).
   final ip = InternetAddress.anyIPv4;
-
-  // Configure a pipeline that logs requests.
-  final handler = Pipeline().addMiddleware(logRequests()).addHandler(_router);
-
-  // For running in containers, we respect the PORT environment variable.
   final port = int.parse(Platform.environment['PORT'] ?? '8080');
+
   final server = await serve(handler, ip, port);
-  print('Server listening on port ${server.port}');
+  print('Servern körs på http://localhost:${server.port}');
 }

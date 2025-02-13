@@ -13,6 +13,7 @@ dependencies:
   mysql_client: ^0.0.27
   shared: 
     path: '../shared'
+  shelf_cors_headers: ^0.1.5
 
 dev_dependencies:
   http: ^0.13.0

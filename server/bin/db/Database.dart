@@ -7,7 +7,7 @@ class Database {
       host: "localhost", // Byt till din databasadress om den är extern
       port: 3306, // Standardport för MySQL
       userName: "root", // Ditt MySQL-användarnamn
-      password: "your password", // Ditt MySQL-lösenord
+      password: "Jafar_Hussein332", // Ditt MySQL-lösenord
       databaseName: "parkingapp", // Ditt databasnamn
     );
 
