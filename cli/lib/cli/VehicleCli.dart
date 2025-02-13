@@ -91,7 +91,7 @@ class VehicleCli {
 
       // Skapa ett nytt fordon med det nya ID:t och de angivna attributen
       Vehicle newVehicle = Vehicle(
-          id: newId, registreringsnummer: regNumber, type: type, owner: owner);
+          id: newId, registreringsnummer: regNumber, typ: type, owner: owner);
 
       // Lägga till fordonet i databasen asynkront
       await vehicleRepo.create(newVehicle);
@@ -115,7 +115,7 @@ class VehicleCli {
       print("\nLista över alla fordon:");
       for (var vehicle in vehicles) {
         print(
-            'ID: ${vehicle.id}, Registreringsnummer: ${vehicle.registreringsnummer}, Typ: ${vehicle.type}, Ägare: ${vehicle.owner.namn}');
+            'ID: ${vehicle.id}, Registreringsnummer: ${vehicle.registreringsnummer}, Typ: ${vehicle.typ}, Ägare: ${vehicle.owner.namn}');
       }
     }
   }
@@ -146,10 +146,10 @@ class VehicleCli {
     }
 
     // Ber användaren ange ny fordonstyp eller behålla den befintliga
-    stdout.write("Ange ny typ (${existingVehicle.type}): ");
+    stdout.write("Ange ny typ (${existingVehicle.typ}): ");
     String newType = userInput.getUserInput();
     if (newType.isEmpty) {
-      newType = existingVehicle.type;
+      newType = existingVehicle.typ;
     }
 
     // Ber användaren ange ny ägare eller behålla den befintliga
@@ -168,7 +168,7 @@ class VehicleCli {
     Vehicle updatedVehicle = Vehicle(
         id: existingVehicle.id,
         registreringsnummer: newRegNumber,
-        type: newType,
+        typ: newType,
         owner: newOwner);
     vehicleRepo.update(id, updatedVehicle);
     print("Fordon uppdaterat.");

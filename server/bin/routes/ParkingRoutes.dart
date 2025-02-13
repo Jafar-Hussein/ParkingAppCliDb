@@ -35,20 +35,21 @@ class ParkingRoutes {
       }
     });
 
-    // Skapa en ny parkering
+    // **Skapa en ny parkering (ID genereras automatiskt)**
     router.post('/', (Request req) async {
       try {
         final body = await req.readAsString();
-        final jsonMap = jsonDecode(body) as Map<String, dynamic>;
-        final newParking = Parking.fromJson(jsonMap);
+        final jsonData = jsonDecode(body) as Map<String, dynamic>;
 
+        // **Ta bort 'id' från JSON-data om den finns**
+        jsonData.remove('id');
+
+        final newParking = Parking.fromJson(jsonData);
         final createdParking = await parkingRepo.create(newParking);
-        return Response.ok(jsonEncode(createdParking.toJson()),
-            headers: {'Content-Type': 'application/json'});
+
+        return Response.ok(jsonEncode(createdParking.toJson()));
       } catch (e) {
-        return Response.internalServerError(
-            body: jsonEncode({'error': 'Ogiltigt JSON-format'}),
-            headers: {'Content-Type': 'application/json'});
+        return Response.internalServerError(body: jsonEncode({'error': '$e'}));
       }
     });
 

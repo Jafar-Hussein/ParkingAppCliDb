@@ -22,14 +22,15 @@ class ParkingSpace {
   set pricePerHour(double value) => _pricePerHour = value;
 
  /// **Konverterar från JSON och hanterar null/tomma strängar**
-  factory ParkingSpace.fromJson(Map<String, dynamic> json) {
+factory ParkingSpace.fromJson(Map<String, dynamic> json) {
     return ParkingSpace(
-      id: (json['id'] == null || json['id'] == "") ? null 
-          : (json['id'] is int ? json['id'] : int.tryParse(json['id'].toString())),
-      address: json['address'] ?? '', // Hanterar null genom att sätta en tom sträng
-      pricePerHour: json['pricePerHour'] is double
-          ? json['pricePerHour']
-          : double.tryParse(json['pricePerHour'].toString()) ?? 0.0, // Standardvärde om konvertering misslyckas
+      id: json.containsKey('id') && json['id'] != null
+          ? int.tryParse(json['id'].toString()) ?? 0 // Ensure id is never null
+          : 0, 
+      address: json['address'] ?? '',
+      pricePerHour: json['pricePerHour'] != null
+          ? double.tryParse(json['pricePerHour'].toString()) ?? 0.0
+          : 0.0,
     );
   }
 

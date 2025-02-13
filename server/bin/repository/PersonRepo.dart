@@ -13,24 +13,29 @@ class PersonRepo implements Repository<Person> {
     var conn = await Database.getConnection();
     try {
       // Kontrollera att namn och personnummer inte är tomma
-      if (person.namn.isEmpty || person.personnummer.isEmpty) {
+      if (person.namn.trim().isEmpty || person.personnummer.trim().isEmpty) {
         throw Exception('Fel: Namn eller personnummer är tomt.');
       }
 
       // Lägg till personen i databasen
       await conn.execute(
         'INSERT INTO person (namn, personnummer) VALUES (:namn, :personnummer)',
-        person.toJson(),
+        {
+          'namn': person.namn,
+          'personnummer': person.personnummer,
+        },
       );
 
       // Hämta det nya ID:t
       var result = await conn.execute('SELECT LAST_INSERT_ID() AS id');
       int newId = int.parse(result.rows.first.colByName('id')!);
 
-      print('Person tillagd med ID: $newId');
+      print(
+          'Person tillagd: ID $newId, Namn: ${person.namn}, Personnummer: ${person.personnummer}');
 
       // Returnera den skapade personen
-      return Person.fromJson({...person.toJson(), 'id': newId});
+      return Person(
+          id: newId, namn: person.namn, personnummer: person.personnummer);
     } catch (e) {
       print('Fel: Kunde inte lägga till person → $e');
       throw Exception('Kunde inte skapa person.');
@@ -47,14 +52,17 @@ class PersonRepo implements Repository<Person> {
     try {
       var results = await conn.execute('SELECT * FROM person');
       for (final row in results.rows) {
-        persons.add(Person.fromJson({
-          'id': int.parse(row.colByName('id')!),
-          'namn': row.colByName('namn')!,
-          'personnummer': row.colByName('personnummer')!,
-        }));
+        String namn = row.colByName('namn') ?? '';
+        String personnummer = row.colByName('personnummer') ?? '';
+        int id = int.parse(row.colByName('id')!);
+
+        print(
+            'Hämtad person: ID $id, Namn: $namn, Personnummer: $personnummer');
+
+        persons.add(Person(id: id, namn: namn, personnummer: personnummer));
       }
     } catch (e) {
-      print('Fel: Kunde inte hämta personer. $e');
+      print('Fel: Kunde inte hämta personer → $e');
       return [];
     } finally {
       await conn.close();
@@ -74,15 +82,17 @@ class PersonRepo implements Repository<Person> {
 
       if (results.rows.isNotEmpty) {
         var row = results.rows.first;
-        return Person.fromJson({
-          'id': int.parse(row.colByName('id')!),
-          'namn': row.colByName('namn')!,
-          'personnummer': row.colByName('personnummer')!,
-        });
+        String namn = row.colByName('namn') ?? '';
+        String personnummer = row.colByName('personnummer') ?? '';
+
+        print(
+            'Hämtad person: ID $id, Namn: $namn, Personnummer: $personnummer');
+
+        return Person(id: id, namn: namn, personnummer: personnummer);
       }
       return null;
     } catch (e) {
-      print('Fel: Kunde inte hämta person med ID $id. $e');
+      print('Fel: Kunde inte hämta person med ID $id → $e');
       return Future.error('Misslyckades med att hämta person');
     } finally {
       await conn.close();
@@ -96,7 +106,11 @@ class PersonRepo implements Repository<Person> {
     try {
       await conn.execute(
         'UPDATE person SET namn = :namn, personnummer = :personnummer WHERE id = :id',
-        person.toJson()..addAll({'id': id}),
+        {
+          'namn': person.namn,
+          'personnummer': person.personnummer,
+          'id': id,
+        },
       );
 
       // Hämta den uppdaterade personen
@@ -109,11 +123,15 @@ class PersonRepo implements Repository<Person> {
         throw Exception("Ingen person hittades med ID $id.");
       }
 
-      return Person.fromJson({
-        'id': int.parse(result.rows.first.colByName('id')!),
-        'namn': result.rows.first.colByName('namn')!,
-        'personnummer': result.rows.first.colByName('personnummer')!,
-      });
+      var row = result.rows.first;
+      String updatedNamn = row.colByName('namn') ?? '';
+      String updatedPersonnummer = row.colByName('personnummer') ?? '';
+
+      print(
+          'Uppdaterad person: ID $id, Namn: $updatedNamn, Personnummer: $updatedPersonnummer');
+
+      return Person(
+          id: id, namn: updatedNamn, personnummer: updatedPersonnummer);
     } catch (e) {
       print('Fel: Kunde inte uppdatera person → $e');
       throw Exception('Kunde inte uppdatera person.');
@@ -137,12 +155,9 @@ class PersonRepo implements Repository<Person> {
         throw Exception('Ingen person hittades med ID: $id');
       }
 
-      // Konvertera resultatet till en Person
-      var deletedPerson = Person.fromJson({
-        'id': int.parse(result.rows.first.colByName('id')!),
-        'namn': result.rows.first.colByName('namn')!,
-        'personnummer': result.rows.first.colByName('personnummer')!,
-      });
+      var row = result.rows.first;
+      String deletedNamn = row.colByName('namn') ?? '';
+      String deletedPersonnummer = row.colByName('personnummer') ?? '';
 
       // Radera personen
       await conn.execute(
@@ -150,8 +165,11 @@ class PersonRepo implements Repository<Person> {
         {'id': id},
       );
 
-      print('Person raderad: ID $id');
-      return deletedPerson;
+      print(
+          'Person raderad: ID $id, Namn: $deletedNamn, Personnummer: $deletedPersonnummer');
+
+      return Person(
+          id: id, namn: deletedNamn, personnummer: deletedPersonnummer);
     } catch (e) {
       print('Fel: Kunde inte radera person → $e');
       throw Exception('Kunde inte radera person.');

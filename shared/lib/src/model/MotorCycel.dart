@@ -9,6 +9,6 @@ class MotorCycel extends Vehicle {
   }) : super(
             id: id,
             registreringsnummer: registreringsnummer,
-            type: 'Motorcycel',
+            typ: 'Motorcycel',
             owner: owner);
 }

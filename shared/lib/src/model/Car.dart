@@ -9,6 +9,6 @@ class Car extends Vehicle {
   }) : super(
             id: id,
             registreringsnummer: registreringsnummer,
-            type: 'Car',
+            typ: 'Car',
             owner: owner);
 }

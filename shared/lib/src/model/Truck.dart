@@ -6,5 +6,9 @@ class Truck extends Vehicle {
     required int id,
     required String registreringsnummer,
     required Person owner,
-  }) : super(id: id, registreringsnummer: registreringsnummer, type: 'Truck', owner: owner);
+  }) : super(
+            id: id,
+            registreringsnummer: registreringsnummer,
+            typ: 'Truck',
+            owner: owner);
 }

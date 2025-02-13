@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:shared/src/model/ParkingSpace.dart';
 import 'package:shared/src/repository/Repository.dart';
 import '../db/Database.dart';
@@ -12,18 +11,20 @@ class ParkingSpaceRepo implements Repository<ParkingSpace> {
   Future<ParkingSpace> create(ParkingSpace parkingSpace) async {
     var conn = await Database.getConnection();
     try {
-      // Infoga ny parkeringsplats i databasen
       await conn.execute(
         'INSERT INTO parking_space (address, price_per_hour) VALUES (:address, :price_per_hour)',
-        parkingSpace.toJson(), // ✅ Uses toJson() for inserting data
+        {
+          'address': parkingSpace.address,
+          'price_per_hour': parkingSpace.pricePerHour,
+        },
       );
 
-      // Hämta ID för den senast tillagda posten
       var result = await conn.execute('SELECT LAST_INSERT_ID() AS id');
       int newId = int.parse(result.rows.first.colByName('id')!);
 
-      // **Returnera ett nytt `ParkingSpace`-objekt från JSON**
-      return ParkingSpace.fromJson({...parkingSpace.toJson(), 'id': newId});
+      print('Ny parkeringsplats tillagd: ID $newId, Adress: ${parkingSpace.address}, Pris per timme: ${parkingSpace.pricePerHour}');
+
+      return ParkingSpace(id: newId, address: parkingSpace.address, pricePerHour: parkingSpace.pricePerHour);
     } catch (e) {
       print('Fel: Kunde inte lägga till parkeringsplats → $e');
       throw Exception('Kunde inte skapa parkeringsplats');
@@ -36,7 +37,6 @@ class ParkingSpaceRepo implements Repository<ParkingSpace> {
   Future<ParkingSpace> delete(int id) async {
     var conn = await Database.getConnection();
     try {
-      // Hämta den existerande parkeringsplatsen innan radering
       var result = await conn.execute(
         'SELECT * FROM parking_space WHERE id = :id',
         {'id': id},
@@ -46,21 +46,18 @@ class ParkingSpaceRepo implements Repository<ParkingSpace> {
         throw Exception('Ingen parkeringsplats hittades med ID: $id');
       }
 
-      // Konvertera resultatet till en ParkingSpace via fromJson()
-      var deletedParkingSpace = ParkingSpace.fromJson({
-        'id': int.parse(result.rows.first.colByName('id')!),
-        'address': result.rows.first.colByName('address')!,
-        'pricePerHour':
-            double.parse(result.rows.first.colByName('price_per_hour')!),
-      });
+      var deletedParkingSpace = ParkingSpace(
+        id: int.parse(result.rows.first.colByName('id')!),
+        address: result.rows.first.colByName('address')!,
+        pricePerHour: double.parse(result.rows.first.colByName('price_per_hour')!),
+      );
 
-      // Radera posten
       await conn.execute(
         'DELETE FROM parking_space WHERE id = :id',
         {'id': id},
       );
 
-      print('Parkeringsplats raderad: ID $id');
+      print('Parkeringsplats raderad: ID $id, Adress: ${deletedParkingSpace.address}, Pris per timme: ${deletedParkingSpace.pricePerHour}');
 
       return deletedParkingSpace;
     } catch (e) {
@@ -78,14 +75,16 @@ class ParkingSpaceRepo implements Repository<ParkingSpace> {
     try {
       var results = await conn.execute('SELECT * FROM parking_space');
       for (final row in results.rows) {
-        parkingSpaces.add(ParkingSpace.fromJson({
-          'id': int.parse(row.colByName('id')!),
-          'address': row.colByName('address')!,
-          'pricePerHour': double.parse(row.colByName('price_per_hour')!),
-        }));
+        int id = int.parse(row.colByName('id')!);
+        String address = row.colByName('address')!;
+        double pricePerHour = double.parse(row.colByName('price_per_hour')!);
+
+        print('Hämtad parkeringsplats: ID $id, Adress: $address, Pris per timme: $pricePerHour');
+
+        parkingSpaces.add(ParkingSpace(id: id, address: address, pricePerHour: pricePerHour));
       }
     } catch (e) {
-      print('Fel: Kunde inte hämta parkeringsplatser. $e');
+      print('Fel: Kunde inte hämta parkeringsplatser → $e');
       return [];
     } finally {
       await conn.close();
@@ -97,19 +96,24 @@ class ParkingSpaceRepo implements Repository<ParkingSpace> {
   Future<ParkingSpace?> getById(int id) async {
     var conn = await Database.getConnection();
     try {
-      var results = await conn
-          .execute('SELECT * FROM parking_space WHERE id = :id', {'id': id});
+      var results = await conn.execute(
+        'SELECT * FROM parking_space WHERE id = :id',
+        {'id': id},
+      );
+
       if (results.rows.isNotEmpty) {
-        return ParkingSpace.fromJson({
-          'id': int.parse(results.rows.first.colByName('id')!),
-          'address': results.rows.first.colByName('address')!,
-          'pricePerHour':
-              double.parse(results.rows.first.colByName('price_per_hour')!),
-        });
+        var row = results.rows.first;
+        int fetchedId = int.parse(row.colByName('id')!);
+        String address = row.colByName('address')!;
+        double pricePerHour = double.parse(row.colByName('price_per_hour')!);
+
+        print('Hämtad parkeringsplats: ID $fetchedId, Adress: $address, Pris per timme: $pricePerHour');
+
+        return ParkingSpace(id: fetchedId, address: address, pricePerHour: pricePerHour);
       }
       return null;
     } catch (e) {
-      print('Fel: Kunde inte hämta parkeringsplats. $e');
+      print('Fel: Kunde inte hämta parkeringsplats → $e');
       return Future.error('Misslyckades med att hämta parkeringsplats');
     } finally {
       await conn.close();
@@ -121,25 +125,31 @@ class ParkingSpaceRepo implements Repository<ParkingSpace> {
     var conn = await Database.getConnection();
     try {
       await conn.execute(
-          'UPDATE parking_space SET address = :address, price_per_hour = :price_per_hour WHERE id = :id',
-          item.toJson()
-            ..addAll(
-                {'id': id})); // ✅ Uses toJson() to structure query parameters
+        'UPDATE parking_space SET address = :address, price_per_hour = :price_per_hour WHERE id = :id',
+        {
+          'id': id,
+          'address': item.address,
+          'price_per_hour': item.pricePerHour,
+        },
+      );
 
-      // Hämta den uppdaterade posten
-      var result = await conn
-          .execute('SELECT * FROM parking_space WHERE id = :id', {'id': id});
+      var result = await conn.execute(
+        'SELECT * FROM parking_space WHERE id = :id',
+        {'id': id},
+      );
 
       if (result.numOfRows == 0) {
-        throw Exception("Fel: Ingen parkeringsplats hittades med ID $id.");
+        throw Exception("Ingen parkeringsplats hittades med ID $id.");
       }
 
-      return ParkingSpace.fromJson({
-        'id': int.parse(result.rows.first.colByName('id')!),
-        'address': result.rows.first.colByName('address')!,
-        'pricePerHour':
-            double.parse(result.rows.first.colByName('price_per_hour')!)
-      });
+      var row = result.rows.first;
+      int updatedId = int.parse(row.colByName('id')!);
+      String updatedAddress = row.colByName('address')!;
+      double updatedPricePerHour = double.parse(row.colByName('price_per_hour')!);
+
+      print('Uppdaterad parkeringsplats: ID $updatedId, Adress: $updatedAddress, Pris per timme: $updatedPricePerHour');
+
+      return ParkingSpace(id: updatedId, address: updatedAddress, pricePerHour: updatedPricePerHour);
     } catch (e) {
       print('Fel: Kunde inte uppdatera parkeringsplats → $e');
       throw Exception('Kunde inte uppdatera parkeringsplats.');

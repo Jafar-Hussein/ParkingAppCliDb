@@ -3,24 +3,23 @@ import 'Person.dart';
 class Vehicle {
   int id;
   String registreringsnummer;
-  String type; // Bil, motorcykel, etc.
+  String typ; // Ändrat från "type" till "typ"
   Person owner;
 
   Vehicle({
     required this.id,
     required this.registreringsnummer,
-    required this.type,
+    required this.typ,
     required this.owner,
   });
 
-  //getters
-
+  // Getters
   int get getId => id;
   String get getRegistreringsnummer => registreringsnummer;
-  String get getType => type;
+  String get getTyp => typ; // Ändrat från "getType" till "getTyp"
   Person get getOwner => owner;
 
-  //setters
+  // Setters
   set setId(int id) {
     if (id <= 0) {
       throw Exception("ID must be greater than zero.");
@@ -35,22 +34,21 @@ class Vehicle {
     this.registreringsnummer = regNummer;
   }
 
-  set setType(String type) => this.type = type;
+  set setTyp(String typ) =>
+      this.typ = typ; // Ändrat från "setType" till "setTyp"
   set setOwner(Person owner) => this.owner = owner;
 
   // **Konverterar från JSON till ett `Vehicle`-objekt**
   factory Vehicle.fromJson(Map<String, dynamic> json) {
     return Vehicle(
-      id: (json['id'] == null || json['id'] == "")
-          ? null
-          : (json['id'] is int
-              ? json['id']
-              : int.tryParse(json['id'].toString())),
-      registreringsnummer: json['registreringsnummer'] ?? "",
-      type: json['type'] ?? "",
-      owner: json['owner'] != null
+      id: json.containsKey('id') && json['id'] != null
+          ? int.tryParse(json['id'].toString()) ?? 0
+          : 0,
+      registreringsnummer: json['registreringsnummer'] ?? '',
+      typ: json['typ'] ?? '', // Ändrat från "type" till "typ"
+      owner: json['owner'] is Map<String, dynamic>
           ? Person.fromJson(json['owner'])
-          : throw Exception("Owner is required"),
+          : Person(id: 0, namn: 'Unknown', personnummer: ''),
     );
   }
 
@@ -59,8 +57,8 @@ class Vehicle {
     return {
       'id': id,
       'registreringsnummer': registreringsnummer,
-      'type': type,
-      'owner': owner.toJson(), // Owner måste också ha toJson()
+      'typ': typ, // Ändrat från "type" till "typ"
+      'owner': owner.toJson(),
     };
   }
 }

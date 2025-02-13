@@ -34,21 +34,21 @@ class VehicleRoutes {
             headers: {'Content-Type': 'application/json'});
       }
     });
-
-    // Skapa ett nytt fordon
+  // **Skapa ett nytt fordon (ID genereras automatiskt)**
     router.post('/', (Request req) async {
       try {
         final body = await req.readAsString();
-        final jsonMap = jsonDecode(body) as Map<String, dynamic>;
-        final newVehicle = Vehicle.fromJson(jsonMap);
+        final jsonData = jsonDecode(body) as Map<String, dynamic>;
 
+        // **Ta bort 'id' från JSON-data om den finns**
+        jsonData.remove('id');
+
+        final newVehicle = Vehicle.fromJson(jsonData);
         final createdVehicle = await vehicleRepo.create(newVehicle);
-        return Response.ok(jsonEncode(createdVehicle.toJson()),
-            headers: {'Content-Type': 'application/json'});
+
+        return Response.ok(jsonEncode(createdVehicle.toJson()));
       } catch (e) {
-        return Response.internalServerError(
-            body: jsonEncode({'error': 'Ogiltigt JSON-format'}),
-            headers: {'Content-Type': 'application/json'});
+        return Response.internalServerError(body: jsonEncode({'error': '$e'}));
       }
     });
 

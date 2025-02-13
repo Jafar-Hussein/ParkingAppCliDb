@@ -46,16 +46,16 @@ class Parking {
   }
 
   // Convert from JSON
-  factory Parking.fromJson(Map<String, dynamic> json) {
+factory Parking.fromJson(Map<String, dynamic> json) {
     return Parking(
-      id: json['id'] != null ? int.tryParse(json['id'].toString()) : null,
+       id: json.containsKey('id') && json['id'] != null
+          ? int.tryParse(json['id'].toString()) ?? 0 // Ensure id is never null
+          : 0,
       vehicle: Vehicle.fromJson(json['vehicle']),
       parkingSpace: ParkingSpace.fromJson(json['parkingSpace']),
       startTime: DateTime.parse(json['startTime']),
       endTime: json['endTime'] != null ? DateTime.parse(json['endTime']) : null,
-      price: json['price'] != null
-          ? double.tryParse(json['price'].toString()) ?? 0.0
-          : 0.0, // Ensures a valid double
+      price: json['price'] != null ? double.tryParse(json['price'].toString()) : null,
     );
   }
 
