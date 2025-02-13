@@ -1,14 +1,12 @@
 import 'dart:io';
-import '../../server/bin/repository/PersonRepo.dart';
+import 'package:firstapp/repository/ParkingRepo.dart';
+import 'package:firstapp/repository/ParkingSpaceRepo.dart';
+import 'package:firstapp/repository/VehicleRepo.dart';
+import 'package:firstapp/repository/PersonRepo.dart';
+
 import 'package:firstapp/util/Input.dart';
 import 'package:firstapp/util/MenuUtil.dart';
 
-import '../../shared/lib/src/model/Parking.dart';
-import '../../server/bin/repository/ParkingRepo.dart';
-import '../../shared/lib/src/model/Vehicle.dart';
-import '../../server/bin/repository/VehicleRepo.dart';
-import '../../shared/lib/src/model/ParkingSpace.dart';
-import '../../server/bin/repository/ParkingSpaceRepo.dart';
 import 'package:firstapp/cli/ParkingCli.dart';
 import 'package:firstapp/cli/ParkingSpaceCli.dart';
 import 'package:firstapp/cli/PersonCli.dart';
@@ -36,7 +34,8 @@ void main() async {
     print("Vad vill du hantera?");
     menuUtil.printMainMenu();
     var input = userInput.getUserInput();
-    back = await userChoice(input, personRepo, vehicleRepo, parkingSpaceRepo, parkingRepo, personCli, vehicleCli, parkingSpaceCli, parkingCli);
+    back = await userChoice(input, personRepo, vehicleRepo, parkingSpaceRepo,
+        parkingRepo, personCli, vehicleCli, parkingSpaceCli, parkingCli);
   }
 }
 
@@ -61,7 +60,8 @@ Future<bool> userChoice(
       await parkingSpaceCli.manageParkingSpaces(parkingSpaceRepo);
       return false;
     case "4":
-      await parkingCli.manageParking(parkingRepo, vehicleRepo, parkingSpaceRepo);
+      await parkingCli.manageParking(
+          parkingRepo, vehicleRepo, parkingSpaceRepo);
       return false;
     case "5":
       print("Hejdå");
