@@ -2,30 +2,45 @@ import 'dart:io';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart';
 import 'package:shelf_router/shelf_router.dart';
-import 'package:shelf_cors_headers/shelf_cors_headers.dart';
 
-import '../bin/routes/PersonRoutes.dart';
-import '../bin/routes/VehicleRoutes.dart';
-import '../bin/routes/ParkingRoutes.dart';
-import '../bin/routes/ParkingSpace.dart';
+import './routes/PersonRoutes.dart';
+import './routes/VehicleRoutes.dart';
+import './routes/ParkingRoutes.dart';
+import './routes/ParkingSpace.dart';
 
-// Skapa en router och inkludera alla route-filer
-final _router = Router()
+// Skapa en router och lägg till alla routes
+final Router appRouter = Router()
   ..mount('/persons', PersonRoutes().router)
   ..mount('/vehicles', VehicleRoutes().router)
   ..mount('/parkings', ParkingRoutes().router)
   ..mount('/parkingspaces', ParkingSpaceRoutes().router);
 
-// Middleware för att logga och hantera CORS
-final handler = Pipeline()
-    .addMiddleware(logRequests())
-    .addMiddleware(corsHeaders()) // Tillåter API-anrop från frontend
-    .addHandler(_router);
+// Middleware för loggning och felhantering
+Handler createHandler() {
+  return Pipeline()
+      .addMiddleware(logRequests())
+      .addMiddleware((Handler innerHandler) {
+    return (Request request) async {
+      try {
+        final response = await innerHandler(request);
+        return response;
+      } catch (e, stackTrace) {
+        print('Server error: $e\n$stackTrace');
+        return Response.internalServerError(
+          body: 'Internt serverfel: $e',
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+    };
+  }).addHandler(appRouter);
+}
 
 void main(List<String> args) async {
   final ip = InternetAddress.anyIPv4;
-  final port = int.parse(Platform.environment['PORT'] ?? '8080');
+  final port = int.parse(Platform.environment['PORT'] ?? '8081');
+
+  final handler = createHandler();
 
   final server = await serve(handler, ip, port);
-  print('Servern körs på http://localhost:${server.port}');
+  print('Servern körs på http://${server.address.host}:${server.port}');
 }

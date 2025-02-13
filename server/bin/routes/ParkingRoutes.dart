@@ -11,7 +11,7 @@ class ParkingRoutes {
     final router = Router();
 
     // Hämta alla parkeringar
-    router.get('/parkings', (Request req) async {
+    router.get('/', (Request req) async {
       final parkings = await parkingRepo.getAll();
       final jsonResponse = jsonEncode(parkings.map((p) => p.toJson()).toList());
       return Response.ok(jsonResponse,
@@ -19,7 +19,7 @@ class ParkingRoutes {
     });
 
     // Hämta en specifik parkering
-    router.get('/parkings/<parkingId>', (Request req, String parkingId) async {
+    router.get('/<parkingId>', (Request req, String parkingId) async {
       try {
         final parking = await parkingRepo.getById(int.parse(parkingId));
         return parking != null
@@ -36,7 +36,7 @@ class ParkingRoutes {
     });
 
     // Skapa en ny parkering
-    router.post('/parkings', (Request req) async {
+    router.post('/', (Request req) async {
       try {
         final body = await req.readAsString();
         final jsonMap = jsonDecode(body) as Map<String, dynamic>;
@@ -53,7 +53,7 @@ class ParkingRoutes {
     });
 
     // Uppdatera en parkering
-    router.put('/parkings/<parkingId>', (Request req, String parkingId) async {
+    router.put('/<parkingId>', (Request req, String parkingId) async {
       try {
         final body = await req.readAsString();
         final jsonMap = jsonDecode(body) as Map<String, dynamic>;
@@ -71,8 +71,7 @@ class ParkingRoutes {
     });
 
     // Ta bort en parkering
-    router.delete('/parkings/<parkingId>',
-        (Request req, String parkingId) async {
+    router.delete('/<parkingId>', (Request req, String parkingId) async {
       try {
         final result = await parkingRepo.delete(int.parse(parkingId));
         return Response.ok(jsonEncode({'message': 'Parkering raderad'}),

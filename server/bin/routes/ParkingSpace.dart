@@ -11,7 +11,7 @@ class ParkingSpaceRoutes {
     final router = Router();
 
     // Hämta alla parkeringsplatser
-    router.get('/parkingspaces', (Request req) async {
+    router.get('/', (Request req) async {
       final parkingSpaces = await parkingSpaceRepo.getAll();
       final jsonResponse =
           jsonEncode(parkingSpaces.map((p) => p.toJson()).toList());
@@ -20,7 +20,7 @@ class ParkingSpaceRoutes {
     });
 
     // Hämta en specifik parkeringsplats
-    router.get('/parkingspaces/<spaceId>', (Request req, String spaceId) async {
+    router.get('/<spaceId>', (Request req, String spaceId) async {
       try {
         final parkingSpace = await parkingSpaceRepo.getById(int.parse(spaceId));
         return parkingSpace != null
@@ -37,7 +37,7 @@ class ParkingSpaceRoutes {
     });
 
     // Skapa en ny parkeringsplats
-    router.post('/parkingspaces', (Request req) async {
+    router.post('/', (Request req) async {
       try {
         final body = await req.readAsString();
         final jsonMap = jsonDecode(body) as Map<String, dynamic>;
@@ -55,7 +55,7 @@ class ParkingSpaceRoutes {
     });
 
     // Uppdatera en parkeringsplats
-    router.put('/parkingspaces/<spaceId>', (Request req, String spaceId) async {
+    router.put('/<spaceId>', (Request req, String spaceId) async {
       try {
         final body = await req.readAsString();
         final jsonMap = jsonDecode(body) as Map<String, dynamic>;
@@ -73,8 +73,7 @@ class ParkingSpaceRoutes {
     });
 
     // Ta bort en parkeringsplats
-    router.delete('/parkingspaces/<spaceId>',
-        (Request req, String spaceId) async {
+    router.delete('/<spaceId>', (Request req, String spaceId) async {
       try {
         final result = await parkingSpaceRepo.delete(int.parse(spaceId));
         return Response.ok(jsonEncode({'message': 'Parkeringsplats raderad'}),

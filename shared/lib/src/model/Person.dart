@@ -20,9 +20,12 @@ class Person {
 
   factory Person.fromJson(Map<String, dynamic> json) {
     return Person(
-      id: json['id'],
-      namn: json['namn'],
-      personnummer: json['personnummer'],
+      id: json.containsKey('id') && json['id'] != null
+          ? int.tryParse(json['id'].toString()) ?? 0 // Ensure id is never null
+          : 0, // Default to 0 if id is null or missing
+      namn: json['name'] ?? '', // Ensures name is always a string
+      personnummer:
+          json['personnummer'] ?? '', // Ensures personnummer is always a string
     );
   }
 

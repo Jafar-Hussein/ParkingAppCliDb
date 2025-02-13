@@ -2,77 +2,69 @@ import 'Vehicle.dart';
 import 'ParkingSpace.dart';
 
 class Parking {
-  int _id;
+  int? _id;
   Vehicle _vehicle;
   ParkingSpace _parkingSpace;
   DateTime _startTime;
   DateTime? _endTime;
-  double? _price;
+  double _price; // Changed to non-nullable
 
   Parking({
-    required int id,
+    int? id,
     required Vehicle vehicle,
     required ParkingSpace parkingSpace,
     required DateTime startTime,
     DateTime? endTime,
+    double? price, // Nullable in constructor but handled properly
   })  : _id = id,
         _vehicle = vehicle,
         _parkingSpace = parkingSpace,
         _startTime = startTime,
-        _endTime = endTime;
+        _endTime = endTime,
+        _price = price ?? 0.0; // Default value if null
 
   // Getters
-  int get id => _id;
+  int? get id => _id;
   Vehicle get vehicle => _vehicle;
   ParkingSpace get parkingSpace => _parkingSpace;
   DateTime get startTime => _startTime;
   DateTime? get endTime => _endTime;
-  double? get price => _price;
+  double get price => _price; // Now always returns a non-null value
 
   // Setters
-  set id(int value) => _id = value;
+  set price(double value) => _price = value;
   set vehicle(Vehicle value) => _vehicle = value;
   set parkingSpace(ParkingSpace value) => _parkingSpace = value;
-  set startTime(DateTime value) => _startTime = value;
-  set endTime(DateTime? value) => _endTime = value;
-  set price(double? value) => _price = value;
 
+  // Method to calculate parking cost
   double parkingCost() {
-    DateTime now = DateTime.now();
-    DateTime exitTime =
-        _endTime ?? now; // Om parkeringen är pågående, använd nuvarande tid
-
-    double durationInHours = exitTime.difference(_startTime).inMinutes / 60.0;
-    double costPerHour = _parkingSpace.pricePerHour;
-
-    // Extra avgift under rusningstid (07:00-09:00, vardagar)
-    if (_startTime.hour >= 7 &&
-        _startTime.hour <= 9 &&
-        _startTime.weekday <= 5) {
-      costPerHour *= 1.5;
+    if (_endTime == null) {
+      return 0.0;
     }
-
-    return durationInHours * costPerHour;
+    Duration duration = _endTime!.difference(_startTime);
+    return duration.inHours * _parkingSpace.pricePerHour;
   }
 
-  
-   /// **Konverterar från JSON till ett `Parking`-objekt**
+  // Convert from JSON
   factory Parking.fromJson(Map<String, dynamic> json) {
     return Parking(
-      id: json['id'],
+      id: json['id'] != null ? int.tryParse(json['id'].toString()) : null,
       vehicle: Vehicle.fromJson(json['vehicle']),
       parkingSpace: ParkingSpace.fromJson(json['parkingSpace']),
       startTime: DateTime.parse(json['startTime']),
       endTime: json['endTime'] != null ? DateTime.parse(json['endTime']) : null,
-    ).._price = json['price'] != null ? json['price'].toDouble() : null;
+      price: json['price'] != null
+          ? double.tryParse(json['price'].toString()) ?? 0.0
+          : 0.0, // Ensures a valid double
+    );
   }
 
-  /// **Konverterar `Parking`-objektet till JSON**
+  // Convert to JSON
   Map<String, dynamic> toJson() {
     return {
       'id': _id,
-      'vehicle': _vehicle.toJson(), // Vehicle måste ha en toJson()-metod
-      'parkingSpace': _parkingSpace.toJson(), // ParkingSpace måste ha en toJson()-metod
+      'vehicle': _vehicle.toJson(),
+      'parkingSpace': _parkingSpace.toJson(),
       'startTime': _startTime.toIso8601String(),
       'endTime': _endTime?.toIso8601String(),
       'price': _price,

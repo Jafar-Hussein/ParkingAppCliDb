@@ -1,5 +1,5 @@
 class ParkingSpace {
- int _id;
+  int _id;
   String _address;
   double _pricePerHour;
 
@@ -21,11 +21,15 @@ class ParkingSpace {
   set address(String value) => _address = value;
   set pricePerHour(double value) => _pricePerHour = value;
 
+ /// **Konverterar från JSON och hanterar null/tomma strängar**
   factory ParkingSpace.fromJson(Map<String, dynamic> json) {
     return ParkingSpace(
-      id: json['id'],
-      address: json['address'],
-      pricePerHour: json['pricePerHour'].toDouble(),
+      id: (json['id'] == null || json['id'] == "") ? null 
+          : (json['id'] is int ? json['id'] : int.tryParse(json['id'].toString())),
+      address: json['address'] ?? '', // Hanterar null genom att sätta en tom sträng
+      pricePerHour: json['pricePerHour'] is double
+          ? json['pricePerHour']
+          : double.tryParse(json['pricePerHour'].toString()) ?? 0.0, // Standardvärde om konvertering misslyckas
     );
   }
 
@@ -37,5 +41,4 @@ class ParkingSpace {
       'pricePerHour': _pricePerHour,
     };
   }
-  
 }

@@ -38,12 +38,19 @@ class Vehicle {
   set setType(String type) => this.type = type;
   set setOwner(Person owner) => this.owner = owner;
 
-   factory Vehicle.fromJson(Map<String, dynamic> json) {
+  // **Konverterar från JSON till ett `Vehicle`-objekt**
+  factory Vehicle.fromJson(Map<String, dynamic> json) {
     return Vehicle(
-      id: json['id'],
-      registreringsnummer: json['registreringsnummer'],
-      type: json['type'],
-      owner: Person.fromJson(json['owner']),
+      id: (json['id'] == null || json['id'] == "")
+          ? null
+          : (json['id'] is int
+              ? json['id']
+              : int.tryParse(json['id'].toString())),
+      registreringsnummer: json['registreringsnummer'] ?? "",
+      type: json['type'] ?? "",
+      owner: json['owner'] != null
+          ? Person.fromJson(json['owner'])
+          : throw Exception("Owner is required"),
     );
   }
 

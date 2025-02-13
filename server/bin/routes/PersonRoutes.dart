@@ -11,14 +11,14 @@ class PersonRoutes {
     final router = Router();
 
     // Hämta alla personer
-    router.get('/persons', (Request req) async {
+    router.get('/', (Request req) async {
       final persons = await personRepo.getAll();
       return Response.ok(jsonEncode(persons),
           headers: {'Content-Type': 'application/json'});
     });
 
     // Hämta en specifik person via ID
-    router.get('/persons/<id>', (Request req, String id) async {
+    router.get('/<id>', (Request req, String id) async {
       final person = await personRepo.getById(int.parse(id));
       return person != null
           ? Response.ok(jsonEncode(person.toJson()),
@@ -27,13 +27,24 @@ class PersonRoutes {
     });
 
     // Skapa en ny person
-    router.post('/persons/', (Request req) async {
+    router.post('/', (Request req) async {
       try {
         final body = await req.readAsString();
-        final Map<String, dynamic> jsonData = jsonDecode(body);
-        final newPerson = Person.fromJson(jsonData);
+        if (body.isEmpty) {
+          return Response.badRequest(
+              body: jsonEncode({'error': 'Request body is empty'}));
+        }
 
+        final Map<String, dynamic> jsonData = jsonDecode(body);
+        if (!jsonData.containsKey('name') ||
+            !jsonData.containsKey('personnummer')) {
+          return Response.badRequest(
+              body: jsonEncode({'error': 'Missing required fields'}));
+        }
+
+        final newPerson = Person.fromJson(jsonData);
         final createdPerson = await personRepo.create(newPerson);
+
         return Response.ok(jsonEncode(createdPerson.toJson()),
             headers: {'Content-Type': 'application/json'});
       } catch (e) {
@@ -43,7 +54,7 @@ class PersonRoutes {
     });
 
     // Uppdatera en person via ID
-    router.put('/person/<id>', (Request req, String id) async {
+    router.put('/<id>', (Request req, String id) async {
       try {
         final body = await req.readAsString();
         final Map<String, dynamic> jsonData = jsonDecode(body);

@@ -11,17 +11,16 @@ class VehicleRoutes {
     final router = Router();
 
     // Hämta alla fordon
-    router.get('/vehicles', (Request req) async {
+    router.get('/', (Request req) async {
       final vehicles = await vehicleRepo.getAll();
-      final jsonResponse = jsonEncode(vehicles
-          .map((v) => v.toJson())
-          .toList()); // Konvertera lista till JSON
+      final jsonResponse =
+          jsonEncode(vehicles.map((v) => v.toJson()).toList());
       return Response.ok(jsonResponse,
           headers: {'Content-Type': 'application/json'});
     });
 
-    // Hämta ett fordon via ID
-    router.get('/vehicles/<vehicleId>', (Request req, String vehicleId) async {
+    // Hämta ett specifikt fordon
+    router.get('/<vehicleId>', (Request req, String vehicleId) async {
       try {
         final vehicle = await vehicleRepo.getById(int.parse(vehicleId));
         return vehicle != null
@@ -37,11 +36,11 @@ class VehicleRoutes {
     });
 
     // Skapa ett nytt fordon
-    router.post('/vehicles', (Request req) async {
+    router.post('/', (Request req) async {
       try {
         final body = await req.readAsString();
         final jsonMap = jsonDecode(body) as Map<String, dynamic>;
-        final newVehicle = Vehicle.fromJson(jsonMap); // Använd fromJson-metoden
+        final newVehicle = Vehicle.fromJson(jsonMap);
 
         final createdVehicle = await vehicleRepo.create(newVehicle);
         return Response.ok(jsonEncode(createdVehicle.toJson()),
@@ -53,8 +52,8 @@ class VehicleRoutes {
       }
     });
 
-    // Uppdatera ett fordon via ID
-    router.put('/vehicles/<vehicleId>', (Request req, String vehicleId) async {
+    // Uppdatera ett fordon
+    router.put('/<vehicleId>', (Request req, String vehicleId) async {
       try {
         final body = await req.readAsString();
         final jsonMap = jsonDecode(body) as Map<String, dynamic>;
@@ -71,9 +70,8 @@ class VehicleRoutes {
       }
     });
 
-    // Ta bort ett fordon via ID
-    router.delete('/vehicles/<vehicleId>',
-        (Request req, String vehicleId) async {
+    // Ta bort ett fordon
+    router.delete('/<vehicleId>', (Request req, String vehicleId) async {
       try {
         final result = await vehicleRepo.delete(int.parse(vehicleId));
         return Response.ok(jsonEncode({'message': 'Fordon raderat'}),

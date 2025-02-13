@@ -106,11 +106,12 @@ class ParkingCli {
     }
 
     int newId = (await parkingRepo.getAll()).isEmpty
-        ? 1
-        : (await parkingRepo.getAll())
-                .map((p) => p.id)
-                .reduce((a, b) => a > b ? a : b) +
-            1;
+    ? 1
+    : (await parkingRepo.getAll())
+            .map((p) => p.id ?? 0) // ✅ Hantera null-värde med ?? 0
+            .reduce((a, b) => a > b ? a : b) +
+        1;
+
 
     Parking newParking = Parking(
         id: newId,
@@ -119,7 +120,8 @@ class ParkingCli {
         startTime: startTime,
         endTime: endTime);
 
-    double cost = newParking.parkingCost();
+    double cost = newParking.price ?? 0.0; // ✅ Använd ?? 0.0 för att förhindra null
+
     newParking.price = cost;
 
     await parkingRepo.create(newParking);
