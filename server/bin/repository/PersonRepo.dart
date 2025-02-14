@@ -104,6 +104,11 @@ class PersonRepo implements Repository<Person> {
   Future<Person> update(int id, Person person) async {
     var conn = await Database.getConnection();
     try {
+      // Debug: Print received data
+      print(
+          "Received update request -> ID: $id, Namn: '${person.namn}', Personnummer: '${person.personnummer}'");
+
+      // Perform update
       await conn.execute(
         'UPDATE person SET namn = :namn, personnummer = :personnummer WHERE id = :id',
         {
@@ -113,7 +118,7 @@ class PersonRepo implements Repository<Person> {
         },
       );
 
-      // Hämta den uppdaterade personen
+      // Fetch the updated record
       var result = await conn.execute(
         'SELECT * FROM person WHERE id = :id',
         {'id': id},
@@ -127,8 +132,9 @@ class PersonRepo implements Repository<Person> {
       String updatedNamn = row.colByName('namn') ?? '';
       String updatedPersonnummer = row.colByName('personnummer') ?? '';
 
+      // Debug: Print database values after update
       print(
-          'Uppdaterad person: ID $id, Namn: $updatedNamn, Personnummer: $updatedPersonnummer');
+          "Updated in database -> ID: $id, Namn: '$updatedNamn', Personnummer: '$updatedPersonnummer'");
 
       return Person(
           id: id, namn: updatedNamn, personnummer: updatedPersonnummer);
