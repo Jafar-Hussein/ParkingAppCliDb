@@ -3,10 +3,13 @@ import 'Vehicle.dart';
 class Person {
   int id;
   String namn;
-  String
-      personnummer; // personnummer är string för att jag gissar på att den ska stå såhär 19900101-1234
+  String personnummer; // Assumed format: "19900101-1234"
 
-  Person({required this.id, required this.namn, required this.personnummer});
+  Person({
+    required this.id,
+    required this.namn,
+    required this.personnummer,
+  });
 
   // Getters
   int get getId => id;
@@ -18,18 +21,43 @@ class Person {
   set setNamn(String newNamn) => namn = newNamn;
   set setPersonnummer(String newPersonnummer) => personnummer = newPersonnummer;
 
+  // **Convert from JSON**
   factory Person.fromJson(Map<String, dynamic> json) {
+    print("Parsing Person from JSON: $json");
+
     return Person(
       id: json.containsKey('id') && json['id'] != null
           ? int.tryParse(json['id'].toString()) ?? 0
           : 0, // Default to 0 if id is null or missing
-      namn: json['namn'] ?? '', // ✅ FIXED: Using "namn" instead of "name"
-      personnummer: json['personnummer'] ?? '',
+      namn: json['namn']?.toString() ?? '', // Ensure it’s a valid string
+      personnummer: json['personnummer']?.toString() ?? '',
     );
   }
 
-  // **Konvertera till JSON**
+  // **Convert to JSON**
   Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'namn': namn,
+      'personnummer': personnummer,
+    };
+  }
+
+  // **Convert from Database Row**
+  factory Person.fromDatabaseRow(Map<String, dynamic> row) {
+    if (!row.containsKey('id') || row['id'] == null) {
+      throw Exception("Person ID is missing in database row.");
+    }
+
+    return Person(
+      id: int.tryParse(row['id'].toString()) ?? 0,
+      namn: row['namn'] ?? '',
+      personnummer: row['personnummer'] ?? '',
+    );
+  }
+
+  // **Convert to Database Row**
+  Map<String, dynamic> toDatabaseRow() {
     return {
       'id': id,
       'namn': namn,

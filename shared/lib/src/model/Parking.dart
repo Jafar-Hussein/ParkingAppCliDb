@@ -1,5 +1,6 @@
 import 'Vehicle.dart';
 import 'ParkingSpace.dart';
+import 'Person.dart';
 
 class Parking {
   int? _id;
@@ -74,6 +75,43 @@ class Parking {
       'parkingSpace': {'id': _parkingSpace.id},
       'startTime':
           _startTime.toString().split('.')[0], // Ensures correct format
+      'endTime': _endTime != null ? _endTime.toString().split('.')[0] : null,
+      'price': _price,
+    };
+  }
+
+  factory Parking.fromDatabaseRow(Map<String, dynamic> row) {
+    return Parking(
+      id: row['id'],
+      vehicle: Vehicle(
+        id: row['vehicleId'],
+        registreringsnummer: row['registreringsnummer'] ?? 'Okänd',
+        typ: row['typ'] ?? 'Okänd',
+        owner: Person(
+          id: row['ownerId'] ?? 0,
+          namn: row['namn'] ?? 'Okänd',
+          personnummer: row['personnummer'] ?? '',
+        ),
+      ),
+      parkingSpace: ParkingSpace(
+        id: row['parkingSpaceId'],
+        address: row['address'] ?? 'Okänd',
+        pricePerHour: row['pricePerHour'] != null
+            ? double.tryParse(row['pricePerHour'].toString()) ?? 0.0
+            : 0.0,
+      ),
+      startTime: DateTime.parse(row['startTime']),
+      endTime: row['endTime'] != null ? DateTime.parse(row['endTime']) : null,
+      price: row['price'] ?? 0.0,
+    );
+  }
+
+  Map<String, dynamic> toDatabaseRow() {
+    return {
+      'id': _id,
+      'vehicleId': _vehicle.id,
+      'parkingSpaceId': _parkingSpace.id,
+      'startTime': _startTime.toString().split('.')[0],
       'endTime': _endTime != null ? _endTime.toString().split('.')[0] : null,
       'price': _price,
     };

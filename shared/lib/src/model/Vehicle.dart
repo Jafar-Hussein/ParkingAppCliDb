@@ -3,7 +3,7 @@ import 'Person.dart';
 class Vehicle {
   int id;
   String registreringsnummer;
-  String typ; // Ändrat från "type" till "typ"
+  String typ; // Changed from "type" to "typ"
   Person owner;
 
   Vehicle({
@@ -16,7 +16,7 @@ class Vehicle {
   // Getters
   int get getId => id;
   String get getRegistreringsnummer => registreringsnummer;
-  String get getTyp => typ; // Ändrat från "getType" till "getTyp"
+  String get getTyp => typ;
   Person get getOwner => owner;
 
   // Setters
@@ -34,31 +34,54 @@ class Vehicle {
     this.registreringsnummer = regNummer;
   }
 
-  set setTyp(String typ) =>
-      this.typ = typ; // Ändrat från "setType" till "setTyp"
+  set setTyp(String typ) => this.typ = typ;
   set setOwner(Person owner) => this.owner = owner;
 
-  // **Konverterar från JSON till ett `Vehicle`-objekt**
+  // **Convert from JSON to `Vehicle` object**
   factory Vehicle.fromJson(Map<String, dynamic> json) {
     return Vehicle(
       id: json.containsKey('id') && json['id'] != null
           ? int.tryParse(json['id'].toString()) ?? 0
           : 0,
       registreringsnummer: json['registreringsnummer'] ?? '',
-      typ: json['typ'] ?? '', // Ändrat från "type" till "typ"
+      typ: json['typ'] ?? '',
       owner: json['owner'] is Map<String, dynamic>
           ? Person.fromJson(json['owner'])
           : Person(id: 0, namn: 'Unknown', personnummer: ''),
     );
   }
 
-  // **Konvertera till JSON**
+  // **Convert to JSON**
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'registreringsnummer': registreringsnummer,
-      'typ': typ, // Ändrat från "type" till "typ"
+      'typ': typ,
       'owner': owner.toJson(),
+    };
+  }
+
+  // **Convert from Database Row**
+  factory Vehicle.fromDatabaseRow(Map<String, dynamic> row) {
+    return Vehicle(
+      id: int.tryParse(row['id'].toString()) ?? 0,
+      registreringsnummer: row['registreringsnummer'] ?? '',
+      typ: row['typ'] ?? '',
+      owner: Person.fromDatabaseRow({
+        'id': row['ownerId'],
+        'namn': row['ownerNamn'],
+        'personnummer': row['personnummer'],
+      }),
+    );
+  }
+
+  // **Convert to Database Row**
+  Map<String, dynamic> toDatabaseRow() {
+    return {
+      'id': id,
+      'registreringsnummer': registreringsnummer,
+      'typ': typ,
+      'ownerId': owner.id,
     };
   }
 }

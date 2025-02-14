@@ -8,49 +8,24 @@ class VehicleRepo implements Repository<Vehicle> {
   VehicleRepo._internal();
   static VehicleRepo get instance => _instance;
 
-  /// **Lägger till ett fordon i databasen och returnerar det skapade fordonet.**
-
+  /// **Lägger till ett fordon i databasen**
   @override
   Future<Vehicle> create(Vehicle vehicle) async {
     var conn = await Database.getConnection();
     try {
-      // Infoga fordon i databasen
       await conn.execute(
         'INSERT INTO vehicle (registreringsnummer, typ, ownerId) VALUES (:registreringsnummer, :typ, :ownerId)',
-        {
-          'registreringsnummer': vehicle.registreringsnummer,
-          'typ': vehicle.typ,
-          'ownerId': vehicle.owner.id,
-        },
+        vehicle.toDatabaseRow(),
       );
 
-      // Hämta det nya fordonets ID
       var result = await conn.execute('SELECT LAST_INSERT_ID() AS id');
       int newId = int.parse(result.rows.first.colByName('id')!);
 
-      // Hämta ägarens fullständiga information
-      var ownerResult = await conn.execute(
-        'SELECT id, namn, personnummer FROM person WHERE id = :ownerId',
-        {'ownerId': vehicle.owner.id},
-      );
-
-      if (ownerResult.rows.isEmpty) {
-        throw Exception('Ägare med ID ${vehicle.owner.id} hittades inte.');
-      }
-
-      var ownerRow = ownerResult.rows.first;
-      Person owner = Person(
-        id: int.parse(ownerRow.colByName('id')!),
-        namn: ownerRow.colByName('namn') ?? 'Okänd',
-        personnummer: ownerRow.colByName('personnummer')!,
-      );
-
-      // Skapa det nya fordonet med ägarens fullständiga info
       var newVehicle = Vehicle(
         id: newId,
         registreringsnummer: vehicle.registreringsnummer,
         typ: vehicle.typ,
-        owner: owner,
+        owner: vehicle.owner,
       );
 
       print(
@@ -58,14 +33,14 @@ class VehicleRepo implements Repository<Vehicle> {
 
       return newVehicle;
     } catch (e) {
-      print('Fel: Kunde inte lägga till fordon. $e');
+      print('Fel: Kunde inte skapa fordon → $e');
       throw Exception('Kunde inte skapa fordon.');
     } finally {
       await conn.close();
     }
   }
 
-  /// **Hämtar alla fordon från databasen och returnerar en lista av `Vehicle`-objekt.**
+  /// **Hämtar alla fordon från databasen**
   @override
   Future<List<Vehicle>> getAll() async {
     var conn = await Database.getConnection();
@@ -79,23 +54,17 @@ class VehicleRepo implements Repository<Vehicle> {
       );
 
       for (final row in results.rows) {
-        var vehicle = Vehicle(
-          id: int.parse(row.colByName('id')!),
-          registreringsnummer: row.colByName('registreringsnummer')!,
-          typ: row.colByName('typ')!,
-          owner: Person(
-            id: int.parse(row.colByName('ownerId')!),
-            namn: row.colByName('ownerNamn') ?? 'Okänd',
-            personnummer: row.colByName('personnummer')!,
-          ),
-        );
-        vehicles.add(vehicle);
-
-        print(
-            'Hämtat fordon: ID ${vehicle.id}, Registreringsnummer: ${vehicle.registreringsnummer}, Typ: ${vehicle.typ}, Ägare: ${vehicle.owner.namn}');
+        vehicles.add(Vehicle.fromDatabaseRow({
+          'id': row.colByName('id'),
+          'registreringsnummer': row.colByName('registreringsnummer'),
+          'typ': row.colByName('typ'),
+          'ownerId': row.colByName('ownerId'),
+          'ownerNamn': row.colByName('ownerNamn'),
+          'personnummer': row.colByName('personnummer'),
+        }));
       }
     } catch (e) {
-      print('Fel: Kunde inte hämta fordon. $e');
+      print('Fel: Kunde inte hämta fordon → $e');
       return [];
     } finally {
       await conn.close();
@@ -103,7 +72,7 @@ class VehicleRepo implements Repository<Vehicle> {
     return vehicles;
   }
 
-  /// **Hämtar ett fordon baserat på ID och returnerar ett `Vehicle`-objekt.**
+  /// **Hämtar ett fordon baserat på ID**
   @override
   Future<Vehicle?> getById(int id) async {
     var conn = await Database.getConnection();
@@ -119,129 +88,67 @@ class VehicleRepo implements Repository<Vehicle> {
 
       if (results.rows.isNotEmpty) {
         var row = results.rows.first;
-        var vehicle = Vehicle(
-          id: int.parse(row.colByName('id')!),
-          registreringsnummer: row.colByName('registreringsnummer')!,
-          typ: row.colByName('typ')!,
-          owner: Person(
-            id: int.parse(row.colByName('ownerId')!),
-            namn: row.colByName('ownerNamn') ?? 'Okänd',
-            personnummer: row.colByName('personnummer')!,
-          ),
-        );
-
-        print(
-            'Hämtat fordon: ID ${vehicle.id}, Registreringsnummer: ${vehicle.registreringsnummer}, Typ: ${vehicle.typ}, Ägare: ${vehicle.owner.namn}');
-
-        return vehicle;
+        return Vehicle.fromDatabaseRow({
+          'id': row.colByName('id'),
+          'registreringsnummer': row.colByName('registreringsnummer'),
+          'typ': row.colByName('typ'),
+          'ownerId': row.colByName('ownerId'),
+          'ownerNamn': row.colByName('ownerNamn'),
+          'personnummer': row.colByName('personnummer'),
+        });
       }
       return null;
     } catch (e) {
-      print('Fel: Kunde inte hämta fordon med ID $id. $e');
+      print('Fel: Kunde inte hämta fordon med ID $id → $e');
       return Future.error('Misslyckades med att hämta fordon.');
     } finally {
       await conn.close();
     }
   }
 
-  /// **Uppdaterar ett fordon i databasen och returnerar det uppdaterade fordonet.**
+  /// **Uppdaterar ett fordon i databasen**
   @override
   Future<Vehicle> update(int id, Vehicle vehicle) async {
     var conn = await Database.getConnection();
     try {
       await conn.execute(
         'UPDATE vehicle SET registreringsnummer = :registreringsnummer, '
-        'typ = :typ, ownerId = :ownerId WHERE id = :id', // Ändrad owner_id -> ownerId
-        {
-          'registreringsnummer': vehicle.registreringsnummer,
-          'typ': vehicle.typ,
-          'ownerId': vehicle.owner.id, // Ändrad owner_id -> ownerId
-          'id': id,
-        },
+        'typ = :typ, ownerId = :ownerId WHERE id = :id',
+        vehicle.toDatabaseRow()..addAll({'id': id}),
       );
 
-      var result = await conn.execute(
-        'SELECT vehicle.id, vehicle.registreringsnummer, vehicle.typ, '
-        'person.id AS owner_id, person.namn, person.personnummer '
-        'FROM vehicle '
-        'INNER JOIN person ON vehicle.owner_id = person.id '
-        'WHERE vehicle.id = :id',
-        {'id': id},
-      );
-
-      if (result.numOfRows == 0) {
-        throw Exception("Inget fordon hittades med ID $id.");
-      }
-
-      var row = result.rows.first;
-      var updatedVehicle = Vehicle(
-        id: int.parse(row.colByName('id')!),
-        registreringsnummer: row.colByName('registreringsnummer')!,
-        typ: row.colByName('typ')!,
-        owner: Person(
-          id: int.parse(row.colByName('owner_id')!),
-          namn: row.colByName('namn')!,
-          personnummer: row.colByName('personnummer')!,
-        ),
-      );
-
-      print(
-          'Uppdaterat fordon: ID ${updatedVehicle.id}, Registreringsnummer: ${updatedVehicle.registreringsnummer}, Typ: ${updatedVehicle.typ}, Ägare: ${updatedVehicle.owner.namn}');
-
-      return updatedVehicle;
+      return await getById(id) ??
+          (throw Exception("Fordon ej hittat efter uppdatering"));
     } catch (e) {
-      print('Fel: Kunde inte uppdatera fordon. $e');
+      print('Fel: Kunde inte uppdatera fordon → $e');
       throw Exception('Kunde inte uppdatera fordon.');
     } finally {
       await conn.close();
     }
   }
 
-  /// **Tar bort ett fordon från databasen baserat på ID och returnerar det raderade fordonet.**
+  /// **Tar bort ett fordon från databasen**
   @override
   Future<Vehicle> delete(int id) async {
     var conn = await Database.getConnection();
     try {
-      // Kontrollera om fordonet existerar innan radering och hämta dess detaljer
-      var result = await conn.execute(
-        'SELECT vehicle.id, vehicle.registreringsnummer, vehicle.typ, '
-        'person.id AS ownerId, person.namn, person.personnummer '
-        'FROM vehicle '
-        'INNER JOIN person ON vehicle.ownerId = person.id '
-        'WHERE vehicle.id = :id',
-        {'id': id},
-      );
-
-      if (result.numOfRows == 0) {
+      var vehicleToDelete = await getById(id);
+      if (vehicleToDelete == null) {
         throw Exception('Inget fordon hittades med ID: $id');
       }
 
-      // Konvertera resultatet till ett Vehicle-objekt innan radering
-      var row = result.rows.first;
-      var deletedVehicle = Vehicle(
-        id: int.parse(row.colByName('id')!),
-        registreringsnummer: row.colByName('registreringsnummer')!,
-        typ: row.colByName('typ')!,
-        owner: Person(
-          id: int.parse(row.colByName('ownerId')!),
-          namn: row.colByName('namn') ?? 'Okänd',
-          personnummer: row.colByName('personnummer')!,
-        ),
-      );
-
-      // Radera fordonet från databasen
       await conn.execute(
         'DELETE FROM vehicle WHERE id = :id',
         {'id': id},
       );
 
       print(
-          'Fordon raderat: ID ${deletedVehicle.id}, Registreringsnummer: ${deletedVehicle.registreringsnummer}, '
-          'Typ: ${deletedVehicle.typ}, Ägare: ${deletedVehicle.owner.namn}');
+          'Fordon raderat: ID ${vehicleToDelete.id}, Registreringsnummer: ${vehicleToDelete.registreringsnummer}, '
+          'Typ: ${vehicleToDelete.typ}, Ägare: ${vehicleToDelete.owner.namn}');
 
-      return deletedVehicle;
+      return vehicleToDelete;
     } catch (e) {
-      print('Fel: Kunde inte radera fordon. $e');
+      print('Fel: Kunde inte radera fordon → $e');
       throw Exception('Kunde inte radera fordon.');
     } finally {
       await conn.close();

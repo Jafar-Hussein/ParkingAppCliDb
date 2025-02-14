@@ -15,7 +15,7 @@ class ParkingRepo implements Repository<Parking> {
   Future<Parking> create(Parking parking) async {
     var conn = await Database.getConnection();
     try {
-      // Fetch ParkingSpace to get correct pricePerHour
+      // Hämta pris per timme från parkeringsplatsen
       var result = await conn.execute(
         'SELECT pricePerHour FROM parkingspace WHERE id = :id',
         {'id': parking.parkingSpace.id},
@@ -23,48 +23,42 @@ class ParkingRepo implements Repository<Parking> {
 
       if (result.numOfRows == 0) {
         throw Exception(
-            "Parkingspace ID ${parking.parkingSpace.id} not found.");
+            "Parkeringsplats ID ${parking.parkingSpace.id} hittades inte.");
       }
 
       double pricePerHour =
           double.parse(result.rows.first.colByName('pricePerHour')!);
 
-      // Calculate price (if parking is finished)
+      // Beräkna pris om parkeringen har avslutats
       double totalPrice = parking.endTime != null
           ? (parking.endTime!.difference(parking.startTime).inMinutes / 60) *
               pricePerHour
           : 0.0;
 
-      // Insert into database
+      // Formatera tid till MySQL-format
+      String formattedStartTime = _formatDateTime(parking.startTime);
+      String? formattedEndTime =
+          parking.endTime != null ? _formatDateTime(parking.endTime!) : null;
+
+      // Infoga parkering i databasen
       await conn.execute(
         'INSERT INTO parking (vehicleId, parkingspaceId, startTime, endTime, price) '
-        'VALUES (:vehicleId, :parkingspaceId, STR_TO_DATE(:startTime, "%Y-%m-%d %H:%i:%s"), '
-        'STR_TO_DATE(:endTime, "%Y-%m-%d %H:%i:%s"), :price)',
+        'VALUES (:vehicleId, :parkingspaceId, :startTime, :endTime, :price)',
         {
           'vehicleId': parking.vehicle.id,
           'parkingspaceId': parking.parkingSpace.id,
-          'startTime': parking.startTime.toLocal().toString().split('.')[0],
-          'endTime': parking.endTime != null
-              ? parking.endTime!.toLocal().toString().split('.')[0]
-              : null,
-          'price': totalPrice, // Store calculated price
+          'startTime': formattedStartTime,
+          'endTime': formattedEndTime,
+          'price': totalPrice,
         },
       );
 
-      // Retrieve the inserted parking record including the price
-      var newParkingResult = await conn.execute(
-        'SELECT id, vehicleId, parkingspaceId, startTime, endTime, price FROM parking WHERE id = LAST_INSERT_ID()',
-      );
+      // Hämta ID på den nyligen skapade parkeringen
+      var newParkingResult =
+          await conn.execute('SELECT LAST_INSERT_ID() AS id');
+      int newId = int.parse(newParkingResult.rows.first.colByName('id')!);
 
-      if (newParkingResult.numOfRows == 0) {
-        throw Exception("Could not retrieve inserted parking.");
-      }
-
-      var newRow = newParkingResult.rows.first;
-      int newId = int.parse(newRow.colByName('id')!);
-      double savedPrice = double.parse(newRow.colByName('price')!);
-
-      print('Ny parkering tillagd: ID $newId, Pris: $savedPrice kr');
+      print('Ny parkering tillagd: ID $newId, Pris: $totalPrice kr');
 
       return Parking(
         id: newId,
@@ -72,7 +66,7 @@ class ParkingRepo implements Repository<Parking> {
         parkingSpace: parking.parkingSpace,
         startTime: parking.startTime,
         endTime: parking.endTime,
-        price: savedPrice, // Ensure the correct price is returned
+        price: totalPrice,
       );
     } catch (e) {
       print('Fel: Kunde inte skapa parkering → $e');
@@ -82,27 +76,25 @@ class ParkingRepo implements Repository<Parking> {
     }
   }
 
-  /// **Hämtar alla parkeringar från databasen och returnerar en lista av `Parking`-objekt.**
+  /// **Hämtar alla parkeringar från databasen**
   @override
   Future<List<Parking>> getAll() async {
     var conn = await Database.getConnection();
     List<Parking> parkings = [];
     try {
       var results = await conn.execute(
-          'SELECT p.id, p.vehicleId, p.parkingspaceId, p.startTime, p.endTime, '
+          'SELECT p.id, p.vehicleId, p.parkingspaceId, p.startTime, p.endTime, p.price, '
           'v.registreringsnummer, v.typ, v.ownerId, '
           'ps.address, ps.pricePerHour, '
           'pr.namn, pr.personnummer '
           'FROM parking p '
           'JOIN vehicle v ON p.vehicleId = v.id '
           'JOIN parkingspace ps ON p.parkingspaceId = ps.id '
-          'JOIN person pr ON v.ownerId = pr.id'); // Check table names!
+          'JOIN person pr ON v.ownerId = pr.id');
 
-      print('Fetched rows count: ${results.numOfRows}');
+      print('Hämtade rader: ${results.numOfRows}');
 
       for (final row in results.rows) {
-        print('Row data: ${row.toString()}'); // Print each row for debugging
-
         parkings.add(_parseParking(row));
       }
     } catch (e) {
@@ -114,7 +106,7 @@ class ParkingRepo implements Repository<Parking> {
     return parkings;
   }
 
-  /// **Hämtar en specifik parkering baserat på ID och returnerar ett `Parking`-objekt.**
+  /// **Hämtar en specifik parkering baserat på ID**
   @override
   Future<Parking?> getById(int id) async {
     var conn = await Database.getConnection();
@@ -144,28 +136,51 @@ class ParkingRepo implements Repository<Parking> {
     }
   }
 
-  /// **Uppdaterar en befintlig parkering och returnerar det uppdaterade objektet.**
+  /// **Uppdaterar en befintlig parkering**
   @override
   Future<Parking> update(int id, Parking parking) async {
     var conn = await Database.getConnection();
     try {
+      // Fetch ParkingSpace to get correct pricePerHour
+      var result = await conn.execute(
+        'SELECT pricePerHour FROM parkingspace WHERE id = :id',
+        {'id': parking.parkingSpace.id},
+      );
+
+      if (result.numOfRows == 0) {
+        throw Exception(
+            "Parkeringsplats ID ${parking.parkingSpace.id} hittades inte.");
+      }
+
+      double pricePerHour =
+          double.parse(result.rows.first.colByName('pricePerHour')!);
+
+      // Recalculate price if parking has ended
+      double updatedPrice = parking.endTime != null
+          ? (parking.endTime!.difference(parking.startTime).inMinutes / 60) *
+              pricePerHour
+          : 0.0;
+
+      // Format date for MySQL
+      String formattedStartTime = _formatDateTime(parking.startTime);
+      String? formattedEndTime =
+          parking.endTime != null ? _formatDateTime(parking.endTime!) : null;
+
+      // Update parking record
       await conn.execute(
         'UPDATE parking SET vehicleId = :vehicleId, parkingspaceId = :parkingspaceId, '
-        'startTime = STR_TO_DATE(:startTime, "%Y-%m-%d %H:%i:%s"), '
-        'endTime = STR_TO_DATE(:endTime, "%Y-%m-%d %H:%i:%s") WHERE id = :id',
+        'startTime = :startTime, endTime = :endTime, price = :price WHERE id = :id',
         {
           'id': id,
           'vehicleId': parking.vehicle.id,
           'parkingspaceId': parking.parkingSpace.id,
-          'startTime': parking.startTime
-              .toLocal()
-              .toString()
-              .split('.')[0], 
-          'endTime': parking.endTime != null
-              ? parking.endTime!.toLocal().toString().split('.')[0]
-              : null, 
+          'startTime': formattedStartTime,
+          'endTime': formattedEndTime,
+          'price': updatedPrice, // ✅ Fix: Store updated price
         },
       );
+
+      print('Parkering uppdaterad: ID $id, Nytt pris: $updatedPrice kr');
 
       return await getById(id) ??
           (throw Exception("Parkering kunde inte uppdateras"));
@@ -177,7 +192,7 @@ class ParkingRepo implements Repository<Parking> {
     }
   }
 
-  /// **Tar bort en parkering från databasen baserat på ID och returnerar den raderade posten.**
+  /// **Tar bort en parkering**
   @override
   Future<Parking> delete(int id) async {
     var conn = await Database.getConnection();
@@ -199,33 +214,40 @@ class ParkingRepo implements Repository<Parking> {
     }
   }
 
-  /// **Hjälpfunktion för att konvertera databassvar till `Parking`-objekt.**
+  /// **Konverterar en databasrad till ett `Parking`-objekt**
   Parking _parseParking(dynamic row) {
     return Parking(
-      id: int.parse(row.colByName('id')!), // Parking ID
+      id: int.parse(row.colByName('id')!),
       vehicle: Vehicle(
-        id: int.parse(row.colByName('vehicleId')!), // Vehicle ID
-        registreringsnummer:
-            row.colByName('registreringsnummer')!, // Vehicle reg num
-        typ: row.colByName('typ')!, // Vehicle type
+        id: int.parse(row.colByName('vehicleId')!),
+        registreringsnummer: row.colByName('registreringsnummer')!,
+        typ: row.colByName('typ')!,
         owner: Person(
-          id: int.parse(row.colByName('ownerId')!), // Owner ID
-          namn: row.colByName('namn') ?? 'Okänd', // Fetch owner name
-          personnummer:
-              row.colByName('personnummer')!, // Fetch owner personnummer
+          id: int.parse(row.colByName('ownerId')!),
+          namn: row.colByName('namn') ?? 'Okänd',
+          personnummer: row.colByName('personnummer')!,
         ),
       ),
       parkingSpace: ParkingSpace(
-        id: int.parse(row.colByName('parkingspaceId')!), // ParkingSpace ID
-        address: row.colByName('address')!, // ParkingSpace address
-        pricePerHour:
-            double.parse(row.colByName('pricePerHour')!), // Price per hour
+        id: int.parse(row.colByName('parkingspaceId')!),
+        address: row.colByName('address')!,
+        pricePerHour: double.parse(row.colByName('pricePerHour')!),
       ),
-      startTime: DateTime.parse(row.colByName('startTime')!), // Start time
+      startTime: DateTime.parse(row.colByName('startTime')!),
       endTime: row.colByName('endTime') != null
           ? DateTime.parse(row.colByName('endTime')!)
-          : null, // End time (nullable)
-      price: double.parse(row.colByName('price')!), // Parking price
+          : null,
+      price: double.parse(row.colByName('price')!),
     );
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    return '${dateTime.year}-${_twoDigits(dateTime.month)}-${_twoDigits(dateTime.day)} '
+        '${_twoDigits(dateTime.hour)}:${_twoDigits(dateTime.minute)}:${_twoDigits(dateTime.second)}';
+  }
+
+// Hjälpmetod för att alltid få tvåsiffriga nummer (01, 02, ... 09)
+  String _twoDigits(int n) {
+    return n.toString().padLeft(2, '0');
   }
 }

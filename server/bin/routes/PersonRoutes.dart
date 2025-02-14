@@ -30,26 +30,45 @@ class PersonRoutes {
     router.post('/', (Request req) async {
       try {
         final body = await req.readAsString();
+        print("Received JSON: $body"); // Debugging incoming JSON
+
         if (body.isEmpty) {
+          print("Request body is empty.");
           return Response.badRequest(
-              body: jsonEncode({'error': 'Request body is empty'}));
+              body: jsonEncode({'error': 'Request body is empty'}),
+              headers: {'Content-Type': 'application/json'});
         }
 
         final Map<String, dynamic> jsonData = jsonDecode(body);
-        if (!jsonData.containsKey('name') ||
+
+        // Debugging input keys
+        print("Parsed JSON keys: ${jsonData.keys}");
+
+        if (!jsonData.containsKey('namn') ||
             !jsonData.containsKey('personnummer')) {
+          print("Missing required fields: 'namn' or 'personnummer'.");
           return Response.badRequest(
-              body: jsonEncode({'error': 'Missing required fields'}));
+              body: jsonEncode(
+                  {'error': 'Missing required fields: namn, personnummer'}),
+              headers: {'Content-Type': 'application/json'});
         }
 
         final newPerson = Person.fromJson(jsonData);
+        print(
+            "Creating Person: Namn=${newPerson.namn}, Personnummer=${newPerson.personnummer}");
+
         final createdPerson = await personRepo.create(newPerson);
+
+        print(
+            "Person created: ID=${createdPerson.id}, Namn=${createdPerson.namn}, Personnummer=${createdPerson.personnummer}");
 
         return Response.ok(jsonEncode(createdPerson.toJson()),
             headers: {'Content-Type': 'application/json'});
-      } catch (e) {
+      } catch (e, stackTrace) {
+        print('Exception occurred: $e\n$stackTrace');
         return Response.internalServerError(
-            body: jsonEncode({'error': 'Invalid input data: $e'}));
+            body: jsonEncode({'error': 'Invalid input data: $e'}),
+            headers: {'Content-Type': 'application/json'});
       }
     });
 
