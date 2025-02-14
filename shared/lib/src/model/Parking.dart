@@ -39,23 +39,30 @@ class Parking {
   // Method to calculate parking cost
   double parkingCost() {
     if (_endTime == null) {
-      return 0.0;
+      return 0.0; // Ongoing parking, no cost calculated
     }
     Duration duration = _endTime!.difference(_startTime);
-    return duration.inHours * _parkingSpace.pricePerHour;
+    double hours = duration.inMinutes / 60; // Convert minutes to hours
+    return hours * _parkingSpace.pricePerHour;
   }
 
   // Convert from JSON
-factory Parking.fromJson(Map<String, dynamic> json) {
+  factory Parking.fromJson(Map<String, dynamic> json) {
     return Parking(
-       id: json.containsKey('id') && json['id'] != null
-          ? int.tryParse(json['id'].toString()) ?? 0 // Ensure id is never null
+      id: json.containsKey('id') && json['id'] != null
+          ? int.tryParse(json['id'].toString()) ?? 0
           : 0,
       vehicle: Vehicle.fromJson(json['vehicle']),
       parkingSpace: ParkingSpace.fromJson(json['parkingSpace']),
-      startTime: DateTime.parse(json['startTime']),
-      endTime: json['endTime'] != null ? DateTime.parse(json['endTime']) : null,
-      price: json['price'] != null ? double.tryParse(json['price'].toString()) : null,
+      startTime: json.containsKey('startTime') && json['startTime'] != null
+          ? DateTime.parse(json['startTime'])
+          : DateTime.now(),
+      endTime: json.containsKey('endTime') && json['endTime'] != null
+          ? DateTime.parse(json['endTime'])
+          : null,
+      price: json.containsKey('price') && json['price'] != null
+          ? double.tryParse(json['price'].toString()) ?? 0.0
+          : 0.0,
     );
   }
 
@@ -63,10 +70,11 @@ factory Parking.fromJson(Map<String, dynamic> json) {
   Map<String, dynamic> toJson() {
     return {
       'id': _id,
-      'vehicle': _vehicle.toJson(),
-      'parkingSpace': _parkingSpace.toJson(),
-      'startTime': _startTime.toIso8601String(),
-      'endTime': _endTime?.toIso8601String(),
+      'vehicle': {'id': _vehicle.id},
+      'parkingSpace': {'id': _parkingSpace.id},
+      'startTime':
+          _startTime.toString().split('.')[0], // Ensures correct format
+      'endTime': _endTime != null ? _endTime.toString().split('.')[0] : null,
       'price': _price,
     };
   }

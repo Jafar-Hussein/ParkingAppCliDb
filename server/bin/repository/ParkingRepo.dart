@@ -15,22 +15,56 @@ class ParkingRepo implements Repository<Parking> {
   Future<Parking> create(Parking parking) async {
     var conn = await Database.getConnection();
     try {
+      // Fetch ParkingSpace to get correct pricePerHour
+      var result = await conn.execute(
+        'SELECT pricePerHour FROM parkingspace WHERE id = :id',
+        {'id': parking.parkingSpace.id},
+      );
+
+      if (result.numOfRows == 0) {
+        throw Exception(
+            "Parkingspace ID ${parking.parkingSpace.id} not found.");
+      }
+
+      double pricePerHour =
+          double.parse(result.rows.first.colByName('pricePerHour')!);
+
+      // Calculate price (if parking is finished)
+      double totalPrice = parking.endTime != null
+          ? (parking.endTime!.difference(parking.startTime).inMinutes / 60) *
+              pricePerHour
+          : 0.0;
+
+      // Insert into database
       await conn.execute(
-        'INSERT INTO parking (vehicle_id, parking_space_id, start_time, end_time) '
-        'VALUES (:vehicle_id, :parking_space_id, :start_time, :end_time)',
+        'INSERT INTO parking (vehicleId, parkingspaceId, startTime, endTime, price) '
+        'VALUES (:vehicleId, :parkingspaceId, STR_TO_DATE(:startTime, "%Y-%m-%d %H:%i:%s"), '
+        'STR_TO_DATE(:endTime, "%Y-%m-%d %H:%i:%s"), :price)',
         {
-          'vehicle_id': parking.vehicle.id,
-          'parking_space_id': parking.parkingSpace.id,
-          'start_time': parking.startTime.toIso8601String(),
-          'end_time': parking.endTime?.toIso8601String(),
+          'vehicleId': parking.vehicle.id,
+          'parkingspaceId': parking.parkingSpace.id,
+          'startTime': parking.startTime.toLocal().toString().split('.')[0],
+          'endTime': parking.endTime != null
+              ? parking.endTime!.toLocal().toString().split('.')[0]
+              : null,
+          'price': totalPrice, // Store calculated price
         },
       );
 
-      var result = await conn.execute('SELECT LAST_INSERT_ID() AS id');
-      int newId = int.parse(result.rows.first.colByName('id')!);
+      // Retrieve the inserted parking record including the price
+      var newParkingResult = await conn.execute(
+        'SELECT id, vehicleId, parkingspaceId, startTime, endTime, price FROM parking WHERE id = LAST_INSERT_ID()',
+      );
 
-      print(
-          'Ny parkering tillagd: ID $newId, Fordon: ${parking.vehicle.registreringsnummer}, Parkeringsplats: ${parking.parkingSpace.address}, Starttid: ${parking.startTime}, Sluttid: ${parking.endTime ?? "Pågående"}');
+      if (newParkingResult.numOfRows == 0) {
+        throw Exception("Could not retrieve inserted parking.");
+      }
+
+      var newRow = newParkingResult.rows.first;
+      int newId = int.parse(newRow.colByName('id')!);
+      double savedPrice = double.parse(newRow.colByName('price')!);
+
+      print('Ny parkering tillagd: ID $newId, Pris: $savedPrice kr');
 
       return Parking(
         id: newId,
@@ -38,10 +72,11 @@ class ParkingRepo implements Repository<Parking> {
         parkingSpace: parking.parkingSpace,
         startTime: parking.startTime,
         endTime: parking.endTime,
+        price: savedPrice, // Ensure the correct price is returned
       );
     } catch (e) {
-      print('Fel: Kunde inte lägga till parkering → $e');
-      throw Exception('Kunde inte skapa parkering');
+      print('Fel: Kunde inte skapa parkering → $e');
+      throw Exception('Kunde inte skapa parkering.');
     } finally {
       await conn.close();
     }
@@ -54,14 +89,20 @@ class ParkingRepo implements Repository<Parking> {
     List<Parking> parkings = [];
     try {
       var results = await conn.execute(
-          'SELECT p.id, p.vehicle_id, p.parking_space_id, p.start_time, p.end_time, '
-          'v.registreringsnummer, v.type, v.owner_id, '
-          'ps.address, ps.price_per_hour '
+          'SELECT p.id, p.vehicleId, p.parkingspaceId, p.startTime, p.endTime, '
+          'v.registreringsnummer, v.typ, v.ownerId, '
+          'ps.address, ps.pricePerHour, '
+          'pr.namn, pr.personnummer '
           'FROM parking p '
-          'JOIN vehicle v ON p.vehicle_id = v.id '
-          'JOIN parking_space ps ON p.parking_space_id = ps.id');
+          'JOIN vehicle v ON p.vehicleId = v.id '
+          'JOIN parkingspace ps ON p.parkingspaceId = ps.id '
+          'JOIN person pr ON v.ownerId = pr.id'); // Check table names!
+
+      print('Fetched rows count: ${results.numOfRows}');
 
       for (final row in results.rows) {
+        print('Row data: ${row.toString()}'); // Print each row for debugging
+
         parkings.add(_parseParking(row));
       }
     } catch (e) {
@@ -79,12 +120,14 @@ class ParkingRepo implements Repository<Parking> {
     var conn = await Database.getConnection();
     try {
       var results = await conn.execute(
-        'SELECT p.id, p.vehicle_id, p.parking_space_id, p.start_time, p.end_time, '
-        'v.registreringsnummer, v.type, v.owner_id, '
-        'ps.address, ps.price_per_hour '
+        'SELECT p.id, p.vehicleId, p.parkingspaceId, p.startTime, p.endTime, p.price, '
+        'v.registreringsnummer, v.typ, v.ownerId, '
+        'ps.address, ps.pricePerHour, '
+        'pr.namn, pr.personnummer '
         'FROM parking p '
-        'JOIN vehicle v ON p.vehicle_id = v.id '
-        'JOIN parking_space ps ON p.parking_space_id = ps.id '
+        'JOIN vehicle v ON p.vehicleId = v.id '
+        'JOIN parkingspace ps ON p.parkingspaceId = ps.id '
+        'JOIN person pr ON v.ownerId = pr.id '
         'WHERE p.id = :id',
         {'id': id},
       );
@@ -107,13 +150,20 @@ class ParkingRepo implements Repository<Parking> {
     var conn = await Database.getConnection();
     try {
       await conn.execute(
-        'UPDATE parking SET vehicle_id = :vehicle_id, parking_space_id = :parking_space_id, start_time = :start_time, end_time = :end_time WHERE id = :id',
+        'UPDATE parking SET vehicleId = :vehicleId, parkingspaceId = :parkingspaceId, '
+        'startTime = STR_TO_DATE(:startTime, "%Y-%m-%d %H:%i:%s"), '
+        'endTime = STR_TO_DATE(:endTime, "%Y-%m-%d %H:%i:%s") WHERE id = :id',
         {
           'id': id,
-          'vehicle_id': parking.vehicle.id,
-          'parking_space_id': parking.parkingSpace.id,
-          'start_time': parking.startTime.toIso8601String(),
-          'end_time': parking.endTime?.toIso8601String(),
+          'vehicleId': parking.vehicle.id,
+          'parkingspaceId': parking.parkingSpace.id,
+          'startTime': parking.startTime
+              .toLocal()
+              .toString()
+              .split('.')[0], 
+          'endTime': parking.endTime != null
+              ? parking.endTime!.toLocal().toString().split('.')[0]
+              : null, 
         },
       );
 
@@ -152,26 +202,30 @@ class ParkingRepo implements Repository<Parking> {
   /// **Hjälpfunktion för att konvertera databassvar till `Parking`-objekt.**
   Parking _parseParking(dynamic row) {
     return Parking(
-      id: int.parse(row.colByName('id')!),
+      id: int.parse(row.colByName('id')!), // Parking ID
       vehicle: Vehicle(
-        id: int.parse(row.colByName('vehicle_id')!),
-        registreringsnummer: row.colByName('registreringsnummer')!,
-        typ: row.colByName('type')!,
+        id: int.parse(row.colByName('vehicleId')!), // Vehicle ID
+        registreringsnummer:
+            row.colByName('registreringsnummer')!, // Vehicle reg num
+        typ: row.colByName('typ')!, // Vehicle type
         owner: Person(
-          id: int.parse(row.colByName('owner_id')!),
-          namn: row.colByName('namn')!,
-          personnummer: row.colByName('personnummer')!,
+          id: int.parse(row.colByName('ownerId')!), // Owner ID
+          namn: row.colByName('namn') ?? 'Okänd', // Fetch owner name
+          personnummer:
+              row.colByName('personnummer')!, // Fetch owner personnummer
         ),
       ),
       parkingSpace: ParkingSpace(
-        id: int.parse(row.colByName('parking_space_id')!),
-        address: row.colByName('address')!,
-        pricePerHour: double.parse(row.colByName('price_per_hour')!),
+        id: int.parse(row.colByName('parkingspaceId')!), // ParkingSpace ID
+        address: row.colByName('address')!, // ParkingSpace address
+        pricePerHour:
+            double.parse(row.colByName('pricePerHour')!), // Price per hour
       ),
-      startTime: DateTime.parse(row.colByName('start_time')!),
-      endTime: row.colByName('end_time') != null
-          ? DateTime.parse(row.colByName('end_time')!)
-          : null,
+      startTime: DateTime.parse(row.colByName('startTime')!), // Start time
+      endTime: row.colByName('endTime') != null
+          ? DateTime.parse(row.colByName('endTime')!)
+          : null, // End time (nullable)
+      price: double.parse(row.colByName('price')!), // Parking price
     );
   }
 }
