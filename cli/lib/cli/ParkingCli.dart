@@ -56,80 +56,60 @@ class ParkingCli {
 
   Future<void> addParking(ParkingRepo parkingRepo, VehicleRepo vehicleRepo,
       ParkingSpaceRepo parkingSpaceRepo) async {
-    stdout.write("\nAnge fordonets ID: ");
-    int? vehicleId = int.tryParse(userInput.getUserInput());
-    if (vehicleId == null) {
-      print("Ogiltigt ID. Försök igen.");
-      return;
-    }
-
-    Vehicle? vehicle = await vehicleRepo.getById(vehicleId);
-    if (vehicle == null) {
-      print("Inget fordon hittades med ID $vehicleId");
-      return;
-    }
-
-    stdout.write("Ange parkeringsplatsens ID: ");
-    int? parkingSpaceId = int.tryParse(userInput.getUserInput());
-    if (parkingSpaceId == null) {
-      print("Ogiltigt ID. Försök igen.");
-      return;
-    }
-
-    ParkingSpace? parkingSpace = await parkingSpaceRepo.getById(parkingSpaceId);
-    if (parkingSpace == null) {
-      print("Ingen parkeringsplats hittades med ID $parkingSpaceId");
-      return;
-    }
-
-    stdout.write("Ange starttid (yyyy-mm-dd hh:mm): ");
-    DateTime startTime;
     try {
-      startTime =
+      stdout.write("\nAnge fordonets ID: ");
+      int? vehicleId = int.tryParse(userInput.getUserInput());
+      if (vehicleId == null) throw FormatException("Ogiltigt fordon ID.");
+
+      Vehicle? vehicle = await vehicleRepo.getById(vehicleId);
+      if (vehicle == null)
+        throw Exception("Inget fordon hittades med ID $vehicleId");
+
+      stdout.write("Ange parkeringsplatsens ID: ");
+      int? parkingSpaceId = int.tryParse(userInput.getUserInput());
+      if (parkingSpaceId == null)
+        throw FormatException("Ogiltigt parkeringsplats ID.");
+
+      ParkingSpace? parkingSpace =
+          await parkingSpaceRepo.getById(parkingSpaceId);
+      if (parkingSpace == null)
+        throw Exception(
+            "Ingen parkeringsplats hittades med ID $parkingSpaceId");
+
+      stdout.write("Ange starttid (yyyy-mm-dd hh:mm): ");
+      DateTime startTime =
           DateTime.parse(userInput.getUserInput() ?? DateTime.now().toString());
-    } catch (e) {
-      print("Ogiltigt datumformat. Ange i formatet yyyy-mm-dd hh:mm.");
-      return;
-    }
 
-    stdout.write(
-        "Ange sluttid (yyyy-mm-dd hh:mm) eller lämna tom för pågående parkering: ");
-    String? endTimeInput = userInput.getUserInput();
-    DateTime? endTime;
-    if (endTimeInput != null && endTimeInput.isNotEmpty) {
-      try {
-        endTime = DateTime.parse(endTimeInput);
-      } catch (e) {
-        print("Ogiltigt datumformat. Ange i formatet yyyy-mm-dd hh:mm.");
-        return;
-      }
-    }
+      stdout.write(
+          "Ange sluttid (yyyy-mm-dd hh:mm) eller lämna tom för pågående parkering: ");
+      String? endTimeInput = userInput.getUserInput();
+      DateTime? endTime = endTimeInput != null && endTimeInput.isNotEmpty
+          ? DateTime.parse(endTimeInput)
+          : null;
 
-    int newId = (await parkingRepo.getAll()).isEmpty
-    ? 1
-    : (await parkingRepo.getAll())
-            .map((p) => p.id ?? 0) // ✅ Hantera null-värde med ?? 0
-            .reduce((a, b) => a > b ? a : b) +
-        1;
-
-
-    Parking newParking = Parking(
-        id: newId,
+      Parking newParking = Parking(
+        id: 0, // ID sätts av databasen
         vehicle: vehicle,
         parkingSpace: parkingSpace,
         startTime: startTime,
-        endTime: endTime);
+        endTime: endTime,
+      );
 
-    double cost = newParking.price ?? 0.0; // ✅ Använd ?? 0.0 för att förhindra null
+      newParking.price =
+          newParking.parkingCost(); // Calculate cost before sending
 
-    newParking.price = cost;
-
-    await parkingRepo.create(newParking);
-    print(
-        "Ny parkering tillagd: ID ${newParking.id}, Kostnad: ${cost.toStringAsFixed(2)} kr");
+      Parking createdParking = await parkingRepo.create(newParking);
+      print(
+          "Ny parkering tillagd: ID ${createdParking.id}, Kostnad: ${createdParking.price} kr");
+    } catch (e) {
+      print("Fel: $e");
+    }
   }
 
   Future<void> viewAllParkings(ParkingRepo parkingRepo) async {
+    // Vänta en kort stund innan vi hämtar uppdaterad data
+    await Future.delayed(Duration(milliseconds: 200));
+
     DateTime now = DateTime.now();
     List<Parking> parkings = await parkingRepo.getAll();
 
@@ -176,63 +156,93 @@ class ParkingCli {
   // Uppdaterar en befintlig parkering
   Future<void> updateParking(ParkingRepo parkingRepo, VehicleRepo vehicleRepo,
       ParkingSpaceRepo parkingSpaceRepo) async {
-    stdout.write("Ange ID på parkeringen du vill uppdatera: ");
+    await viewAllParkings(parkingRepo); // Visa befintliga parkeringar
+
+    stdout.write("\nAnge ID på parkeringen du vill uppdatera: ");
     int? id = int.tryParse(userInput.getUserInput());
     if (id == null) {
-      print("Ogiltigt ID.");
+      print("Ogiltigt ID, försök igen.");
       return;
     }
 
-    // Hämtar den befintliga parkeringen baserat på ID
+    // Hämta befintlig parkering
     Parking? existingParking = await parkingRepo.getById(id);
     if (existingParking == null) {
       print("Ingen parkering hittades med ID $id.");
       return;
     }
 
-    stdout.write("Ange nytt fordonets ID (${existingParking.vehicle.id}): ");
+    print(
+        "Nuvarande detaljer: Fordon: ${existingParking.vehicle.registreringsnummer}, Parkeringsplats: ${existingParking.parkingSpace.address}");
+
+    stdout.write("Ange nytt fordonets ID (lämna tomt för att behålla): ");
     int? newVehicleId = int.tryParse(userInput.getUserInput());
     if (newVehicleId != null) {
-      Vehicle? newVehicle = await vehicleRepo.getById(newVehicleId); // FIXAT
+      Vehicle? newVehicle = await vehicleRepo.getById(newVehicleId);
       if (newVehicle != null) {
         existingParking.vehicle = newVehicle;
       }
     }
 
-    stdout.write(
-        "Ange ny parkeringsplatsens ID (${existingParking.parkingSpace.id}): ");
+    stdout
+        .write("Ange ny parkeringsplatsens ID (lämna tomt för att behålla): ");
     int? newParkingSpaceId = int.tryParse(userInput.getUserInput());
     if (newParkingSpaceId != null) {
       ParkingSpace? newParkingSpace =
-          await parkingSpaceRepo.getById(newParkingSpaceId); // FIXAT
+          await parkingSpaceRepo.getById(newParkingSpaceId);
       if (newParkingSpace != null) {
         existingParking.parkingSpace = newParkingSpace;
       }
     }
 
-    // Uppdaterar parkeringen i databasen
-    await parkingRepo.update(
-        id, existingParking); // Lägg till await om update är asynkron
-    print("Parkering uppdaterad.");
+    stdout.write(
+        "Ange ny sluttid (yyyy-mm-dd hh:mm) eller lämna tom för pågående parkering: ");
+    String? newEndTimeInput = userInput.getUserInput();
+    if (newEndTimeInput != null && newEndTimeInput.isNotEmpty) {
+      existingParking.endTime = DateTime.parse(newEndTimeInput);
+    }
+
+    // Beräkna ny kostnad om endTime har ändrats
+    existingParking.price = existingParking.parkingCost();
+
+    await parkingRepo.update(id, existingParking);
+
+    // **Lösning: Vänta en kort tid innan ny hämtning**
+    await Future.delayed(Duration(milliseconds: 200));
+
+    print("\nParkering uppdaterad!\n");
+
+    // **Tvinga hämtning av den senaste listan från databasen**
+    await viewAllParkings(parkingRepo);
   }
 
   // Tar bort en parkering
   Future<void> deleteParking(ParkingRepo parkingRepo) async {
-    stdout.write("Ange ID på parkeringen du vill ta bort: ");
+    await viewAllParkings(parkingRepo); // Visa befintliga parkeringar
+
+    stdout.write("\nAnge ID på parkeringen du vill ta bort: ");
     int? id = int.tryParse(userInput.getUserInput());
     if (id == null) {
-      print("Ogiltigt ID.");
+      print("Ogiltigt ID, försök igen.");
       return;
     }
 
     // Kontrollera om parkeringen existerar innan borttagning
-    if (parkingRepo.getById(id) == null) {
+    Parking? parkingToDelete = await parkingRepo.getById(id);
+    if (parkingToDelete == null) {
       print("Ingen parkering hittades med ID $id.");
       return;
     }
 
-    // Tar bort parkeringen från databasen
-    parkingRepo.delete(id);
-    print("Parkering borttagen.");
+    // Väntar på att parkeringen tas bort från databasen
+    await parkingRepo.delete(id);
+
+    // **Lösning: Vänta en kort tid innan ny hämtning**
+    await Future.delayed(Duration(milliseconds: 200));
+
+    print("\nParkering borttagen!\n");
+
+    // **Tvinga hämtning av den senaste listan från databasen**
+    await viewAllParkings(parkingRepo);
   }
 }

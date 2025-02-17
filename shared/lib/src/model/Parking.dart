@@ -36,6 +36,7 @@ class Parking {
   set price(double value) => _price = value;
   set vehicle(Vehicle value) => _vehicle = value;
   set parkingSpace(ParkingSpace value) => _parkingSpace = value;
+  set endTime(DateTime? value) => _endTime = value;
 
   // Method to calculate parking cost
   double parkingCost() {

@@ -83,7 +83,12 @@ class ParkingSpaceCli {
 
   // Visar alla parkeringsplatser
   Future<void> viewAllParkingSpaces(ParkingSpaceRepo parkingSpaceRepo) async {
+    // Vänta en kort stund innan vi hämtar uppdaterad data
+    await Future.delayed(Duration(milliseconds: 200));
+
+    // Hämta uppdaterad lista direkt från databasen
     List<ParkingSpace> parkingSpaces = await parkingSpaceRepo.getAll();
+
     if (parkingSpaces.isEmpty) {
       print("Inga parkeringsplatser hittades.");
     } else {
@@ -97,60 +102,81 @@ class ParkingSpaceCli {
 
   // Uppdaterar en befintlig parkeringsplats
   Future<void> updateParkingSpace(ParkingSpaceRepo parkingSpaceRepo) async {
-    stdout.write("Ange ID på parkeringsplatsen du vill uppdatera: ");
+    await viewAllParkingSpaces(parkingSpaceRepo); // Visa befintliga platser
+
+    stdout.write("\nAnge ID på parkeringsplatsen du vill uppdatera: ");
     int? id = int.tryParse(userInput.getUserInput());
     if (id == null) {
-      print("Ogiltigt ID.");
+      print("Ogiltigt ID, försök igen.");
       return;
     }
 
-    // Hämtar befintlig parkeringsplats baserat på ID
+    // Hämta befintlig parkeringsplats
     ParkingSpace? existingSpace = await parkingSpaceRepo.getById(id);
     if (existingSpace == null) {
       print("Ingen parkeringsplats hittades med ID $id.");
       return;
     }
 
-    // Ber användaren ange ny adress, eller behålla den gamla om fältet är tomt
-    stdout.write("Ange ny adress (${existingSpace.address}): ");
+    print(
+        "Nuvarande detaljer: Adress: ${existingSpace.address}, Pris per timme: ${existingSpace.pricePerHour}");
+
+    stdout.write("Ange ny adress (lämna tomt för att behålla): ");
     String newAddress = userInput.getUserInput();
     if (newAddress.isEmpty) {
       newAddress = existingSpace.address;
     }
 
-    // Ber användaren ange nytt pris per timme, eller behålla det gamla om fältet är tomt
-    stdout.write("Ange nytt pris per timme (${existingSpace.pricePerHour}): ");
+    stdout.write("Ange nytt pris per timme (lämna tomt för att behålla): ");
     double? newPricePerHour = double.tryParse(userInput.getUserInput());
     if (newPricePerHour == null || newPricePerHour <= 0) {
       newPricePerHour = existingSpace.pricePerHour;
     }
 
-    // Skapar en uppdaterad parkeringsplats och sparar den i databasen
+    // Uppdatera parkeringsplatsen i databasen
     ParkingSpace updatedSpace = ParkingSpace(
         id: existingSpace.id,
         address: newAddress,
         pricePerHour: newPricePerHour);
-    parkingSpaceRepo.update(id, updatedSpace);
-    print("Parkeringsplats uppdaterad.");
+
+    await parkingSpaceRepo.update(id, updatedSpace);
+
+    // **Lösning: Vänta en kort tid innan ny hämtning**
+    await Future.delayed(Duration(milliseconds: 200));
+
+    print("\nParkeringsplats uppdaterad!\n");
+
+    // **Tvinga hämtning av den senaste listan från databasen**
+    await viewAllParkingSpaces(parkingSpaceRepo);
   }
 
   // Tar bort en parkeringsplats
   Future<void> deleteParkingSpace(ParkingSpaceRepo parkingSpaceRepo) async {
-    stdout.write("Ange ID på parkeringsplatsen du vill ta bort: ");
+    await viewAllParkingSpaces(parkingSpaceRepo); // Visa befintliga platser
+
+    stdout.write("\nAnge ID på parkeringsplatsen du vill ta bort: ");
     int? id = int.tryParse(userInput.getUserInput());
     if (id == null) {
-      print("Ogiltigt ID.");
+      print("Ogiltigt ID, försök igen.");
       return;
     }
 
-    // Kontrollera om parkeringsplatsen existerar innan borttagning
-    if (parkingSpaceRepo.getById(id) == null) {
+    // Kontrollera om platsen existerar innan borttagning
+    ParkingSpace? parkingSpaceToDelete = await parkingSpaceRepo.getById(id);
+    if (parkingSpaceToDelete == null) {
       print("Ingen parkeringsplats hittades med ID $id.");
       return;
     }
 
-    // Tar bort parkeringsplatsen från databasen
-    parkingSpaceRepo.delete(id);
-    print("Parkeringsplats borttagen.");
+    // Väntar på att platsen tas bort från databasen
+    await parkingSpaceRepo.delete(id);
+
+    // **Lösning: Vänta en kort tid innan ny hämtning**
+    await Future.delayed(Duration(milliseconds: 200));
+
+    print("\nParkeringsplats borttagen!\n");
+
+    // **Tvinga hämtning av den senaste listan från databasen**
+    await viewAllParkingSpaces(parkingSpaceRepo);
   }
 }

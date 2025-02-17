@@ -54,14 +54,26 @@ class VehicleRepo implements Repository<Vehicle> {
       );
 
       for (final row in results.rows) {
-        vehicles.add(Vehicle.fromDatabaseRow({
-          'id': row.colByName('id'),
+        // 🛠 Konvertera id och ownerId till INT
+        int vehicleId = int.tryParse(row.colByName('id').toString()) ?? 0;
+        int ownerId = int.tryParse(row.colByName('ownerId').toString()) ?? 0;
+
+        Map<String, dynamic> rowMap = {
+          'id': vehicleId,
           'registreringsnummer': row.colByName('registreringsnummer'),
           'typ': row.colByName('typ'),
-          'ownerId': row.colByName('ownerId'),
-          'ownerNamn': row.colByName('ownerNamn'),
-          'personnummer': row.colByName('personnummer'),
-        }));
+          'ownerId': ownerId, // 🔥 Se till att ownerId är int
+          'owner': {
+            'id': ownerId,
+            'namn': row.colByName('ownerNamn'),
+            'personnummer': row.colByName('personnummer'),
+          }
+        };
+
+        // 🛠 Debug: Skriver ut exakt hur varje rad ser ut innan konvertering
+        print("DEBUG: Skapar Vehicle från DatabaseRow: $rowMap");
+
+        vehicles.add(Vehicle.fromDatabaseRow(rowMap));
       }
     } catch (e) {
       print('Fel: Kunde inte hämta fordon → $e');
@@ -128,25 +140,39 @@ class VehicleRepo implements Repository<Vehicle> {
   }
 
   /// **Tar bort ett fordon från databasen**
+
   @override
   Future<Vehicle> delete(int id) async {
     var conn = await Database.getConnection();
     try {
-      var vehicleToDelete = await getById(id);
-      if (vehicleToDelete == null) {
+      print("DEBUG: Försöker radera fordon med ID: $id...");
+
+      // Kontrollera om fordonet finns innan radering
+      var result = await conn.execute(
+        'SELECT id FROM vehicle WHERE id = :id',
+        {'id': id},
+      );
+
+      if (result.rows.isEmpty) {
+        print("ERROR: Fordonet med ID $id hittades inte.");
         throw Exception('Inget fordon hittades med ID: $id');
       }
 
+      // Radera fordonet
       await conn.execute(
         'DELETE FROM vehicle WHERE id = :id',
         {'id': id},
       );
 
-      print(
-          'Fordon raderat: ID ${vehicleToDelete.id}, Registreringsnummer: ${vehicleToDelete.registreringsnummer}, '
-          'Typ: ${vehicleToDelete.typ}, Ägare: ${vehicleToDelete.owner.namn}');
+      print("Fordon med ID: $id har raderats.");
 
-      return vehicleToDelete;
+      // Returnera ett tomt Vehicle-objekt med endast ID
+      return Vehicle(
+        id: id,
+        registreringsnummer: '',
+        typ: '',
+        owner: Person(id: 0, namn: '', personnummer: ''),
+      );
     } catch (e) {
       print('Fel: Kunde inte radera fordon → $e');
       throw Exception('Kunde inte radera fordon.');

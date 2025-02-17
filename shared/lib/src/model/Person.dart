@@ -44,15 +44,22 @@ class Person {
   }
 
   // **Convert from Database Row**
-  factory Person.fromDatabaseRow(Map<String, dynamic> row) {
-    if (!row.containsKey('id') || row['id'] == null) {
+  factory Person.fromDatabaseRow(Map<String, dynamic> json) {
+    if (json['id'] == null) {
       throw Exception("Person ID is missing in database row.");
+    }
+    if (json['namn'] == null) {
+      throw Exception("Person name is missing in database row.");
+    }
+    if (json['personnummer'] == null) {
+      throw Exception("Personnummer is missing in database row.");
     }
 
     return Person(
-      id: int.tryParse(row['id'].toString()) ?? 0,
-      namn: row['namn'] ?? '',
-      personnummer: row['personnummer'] ?? '',
+      id: int.tryParse(json['id'].toString()) ??
+          (throw Exception("🚨 Person ID could not be converted to int.")),
+      namn: json['namn'] as String,
+      personnummer: json['personnummer'] as String,
     );
   }
 

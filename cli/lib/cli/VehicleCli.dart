@@ -51,64 +51,61 @@ class VehicleCli {
     }
   }
 
-// Funktion för att lägga till ett nytt fordon asynkront
   Future<void> addVehicle(
       VehicleRepo vehicleRepo, PersonRepo personRepo) async {
     try {
-      // Fråga användaren att ange registreringsnummer och ta bort eventuella blanksteg
       stdout.write("\nAnge registreringsnummer: ");
       String regNumber = userInput.getUserInput().trim();
-      if (regNumber.isEmpty) {
+      if (regNumber.isEmpty)
         throw FormatException("Registreringsnummer kan inte vara tomt.");
-      }
 
-      // Fråga användaren att ange typ av fordon
       stdout.write("Ange fordonstyp (Car, Motorcycle, Truck): \n");
       String type = userInput.getUserInput().trim();
-      if (type.isEmpty) {
-        throw FormatException("Fordonstyp kan inte vara tom.");
-      }
+      if (type.isEmpty) throw FormatException("Fordonstyp kan inte vara tom.");
 
-      // Fråga användaren att ange ägarens ID och försök konvertera strängen till ett heltal
       stdout.write("Ange ägarens ID: ");
-      String ownerInput = userInput.getUserInput().trim();
-      int? ownerId = int.tryParse(ownerInput);
-      if (ownerId == null) {
+      int? ownerId = int.tryParse(userInput.getUserInput().trim());
+      if (ownerId == null || ownerId <= 0)
         throw FormatException("Ogiltigt ID-format.");
-      }
 
-      // Hämta ägaren från repository med angivet ID asynkront
+      // 🛠 Debugga att ownerId hämtas korrekt
+      print("DEBUG: ownerId som skickas: $ownerId");
+
+      // Hämta ägaren från databasen
       Person? owner = await personRepo.getById(ownerId);
       if (owner == null) {
         throw Exception("Ingen ägare hittades med ID $ownerId.");
       }
 
-      // Hämta alla fordon asynkront för att generera ett unikt ID
-      List<Vehicle> vehicles = await vehicleRepo.getAll();
-      int newId = vehicles.isEmpty
-          ? 1
-          : vehicles.map((v) => v.id).reduce((a, b) => a > b ? a : b) + 1;
+      // 🛠 Debugga att personen hämtas korrekt
+      print("DEBUG: Hämtad person - ID: ${owner.id}, Namn: ${owner.namn}");
 
-      // Skapa ett nytt fordon med det nya ID:t och de angivna attributen
+      // Skapa nytt fordon
       Vehicle newVehicle = Vehicle(
-          id: newId, registreringsnummer: regNumber, typ: type, owner: owner);
+        id: 1, // Tillfälligt ID, sätts av databasen
+        registreringsnummer: regNumber,
+        typ: type,
+        owner: owner,
+      );
 
-      // Lägga till fordonet i databasen asynkront
+      // Skicka till backend
       await vehicleRepo.create(newVehicle);
 
-      // Informera användaren om att ett nytt fordon har lagts till
       print(
-          "Nytt fordon tillagt: ID ${newVehicle.id}, Registreringsnummer: ${newVehicle.registreringsnummer}, Ägare: ${owner.namn}");
+          "Nytt fordon tillagt: Registreringsnummer ${newVehicle.registreringsnummer}, Ägare ID: ${owner.id}");
     } catch (e) {
-      // Skriv ut felmeddelandet om något går fel under processen
       print("Fel: ${e.toString()}");
-      return;
     }
   }
 
   // Visar alla fordon
   Future<void> viewAllVehicles(VehicleRepo vehicleRepo) async {
+    // Vänta kort för att säkerställa att databasen har uppdaterats
+    await Future.delayed(Duration(milliseconds: 200));
+
+    // Hämta uppdaterad lista direkt från databasen
     List<Vehicle> vehicles = await vehicleRepo.getAll();
+
     if (vehicles.isEmpty) {
       print("Inga fordon hittades.");
     } else {
@@ -123,37 +120,38 @@ class VehicleCli {
   // Uppdaterar ett befintligt fordon
   Future<void> updateVehicle(
       VehicleRepo vehicleRepo, PersonRepo personRepo) async {
-    stdout.write("Ange ID på fordonet du vill uppdatera: ");
+    await viewAllVehicles(vehicleRepo); // Visa befintliga fordon
+
+    stdout.write("\nAnge ID på fordonet du vill uppdatera: ");
     int? id = int.tryParse(userInput.getUserInput());
     if (id == null) {
-      print("Ogiltigt ID.");
+      print("Ogiltigt ID, försök igen.");
       return;
     }
 
-    // Hämtar det befintliga fordonet baserat på ID
     Vehicle? existingVehicle = await vehicleRepo.getById(id);
     if (existingVehicle == null) {
       print("Inget fordon hittades med ID $id.");
       return;
     }
 
-    // Ber användaren ange nytt registreringsnummer eller behålla det befintliga
-    stdout.write(
-        "Ange nytt registreringsnummer (${existingVehicle.registreringsnummer}): ");
+    print(
+        "Nuvarande detaljer: Registreringsnummer: ${existingVehicle.registreringsnummer}, Typ: ${existingVehicle.typ}, Ägare: ${existingVehicle.owner.namn}");
+
+    stdout
+        .write("Ange nytt registreringsnummer (lämna tomt för att behålla): ");
     String newRegNumber = userInput.getUserInput();
     if (newRegNumber.isEmpty) {
       newRegNumber = existingVehicle.registreringsnummer;
     }
 
-    // Ber användaren ange ny fordonstyp eller behålla den befintliga
-    stdout.write("Ange ny typ (${existingVehicle.typ}): ");
+    stdout.write("Ange ny fordonstyp (lämna tomt för att behålla): ");
     String newType = userInput.getUserInput();
     if (newType.isEmpty) {
       newType = existingVehicle.typ;
     }
 
-    // Ber användaren ange ny ägare eller behålla den befintliga
-    stdout.write("Ange ny ägarens ID (${existingVehicle.owner.id}): ");
+    stdout.write("Ange ny ägarens ID (lämna tomt för att behålla): ");
     int? newOwnerId = int.tryParse(userInput.getUserInput());
     Person newOwner = existingVehicle.owner;
 
@@ -164,33 +162,49 @@ class VehicleCli {
       }
     }
 
-    // Skapar ett uppdaterat fordon och sparar det i databasen
     Vehicle updatedVehicle = Vehicle(
-        id: existingVehicle.id,
-        registreringsnummer: newRegNumber,
-        typ: newType,
-        owner: newOwner);
-    vehicleRepo.update(id, updatedVehicle);
-    print("Fordon uppdaterat.");
+      id: existingVehicle.id,
+      registreringsnummer: newRegNumber,
+      typ: newType,
+      owner: newOwner,
+    );
+
+    await vehicleRepo.update(id, updatedVehicle);
+
+    // **Lösning: Vänta en kort tid innan ny hämtning**
+    await Future.delayed(Duration(milliseconds: 200));
+
+    print("\nFordon uppdaterat!\n");
+
+    // **Tvinga hämtning av den senaste listan från databasen**
+    await viewAllVehicles(vehicleRepo);
   }
 
   // Tar bort ett fordon
   Future<void> deleteVehicle(VehicleRepo vehicleRepo) async {
-    stdout.write("Ange ID på fordonet du vill ta bort: ");
-    int? id = int.tryParse(userInput.getUserInput());
+    await viewAllVehicles(vehicleRepo); // Visa befintliga fordon
+
+    stdout.write("\nAnge ID på fordonet du vill ta bort: ");
+    String input = userInput.getUserInput().trim();
+    int? id = int.tryParse(input);
+
     if (id == null) {
-      print("Ogiltigt ID.");
+      print("ERROR: Ogiltigt ID-format, måste vara ett heltal.");
       return;
     }
+    try {
+      Vehicle deletedVehicle = await vehicleRepo.delete(id);
 
-    // Kontrollera om fordonet existerar innan borttagning
-    if (vehicleRepo.getById(id) == null) {
-      print("Inget fordon hittades med ID $id.");
-      return;
+      // Om raderingen lyckades och ID matchar, skriv ut framgångsmeddelande
+      if (deletedVehicle.id == id) {
+        print("\nFordon borttaget: ID ${deletedVehicle.id}\n");
+      } else {
+        print(
+            "\ningen bekräftelse på radering mottogs, men begäran skickades.\n");
+      }
+    } catch (e) {
+      // Endast fånga riktiga fel, inte normala API-responser
+      print("Fel vid borttagning av fordon: $e");
     }
-
-    // Tar bort fordonet från databasen
-    await vehicleRepo.delete(id);
-    print("Fordon borttaget.");
   }
 }

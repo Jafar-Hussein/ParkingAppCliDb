@@ -39,15 +39,37 @@ class Vehicle {
 
   // **Convert from JSON to `Vehicle` object**
   factory Vehicle.fromJson(Map<String, dynamic> json) {
+    print("DEBUG: Skapar Vehicle från JSON: $json");
+
+    // 🛠 Hantera om frontend skickar ownerId istället för owner-objekt
+    if (json.containsKey('ownerId')) {
+      return Vehicle(
+        id: json.containsKey('id') && json['id'] != null
+            ? int.tryParse(json['id'].toString()) ?? 0
+            : 0,
+        registreringsnummer: json['registreringsnummer'] ?? '',
+        typ: json['typ'] ?? '',
+        owner: Person(
+          // Vi skapar en dummy-Person med ownerId
+          id: json['ownerId'],
+          namn: '',
+          personnummer: '',
+        ),
+      );
+    }
+
+    // 🛠 Hantera om frontend skickar owner som ett objekt
+    if (json['owner'] == null || !json['owner'].containsKey('id')) {
+      throw Exception("ERROR: JSON innehåller ingen giltig ownerId!");
+    }
+
     return Vehicle(
       id: json.containsKey('id') && json['id'] != null
           ? int.tryParse(json['id'].toString()) ?? 0
           : 0,
       registreringsnummer: json['registreringsnummer'] ?? '',
       typ: json['typ'] ?? '',
-      owner: json['owner'] is Map<String, dynamic>
-          ? Person.fromJson(json['owner'])
-          : Person(id: 0, namn: 'Unknown', personnummer: ''),
+      owner: Person.fromJson(json['owner']),
     );
   }
 
@@ -62,21 +84,22 @@ class Vehicle {
   }
 
   // **Convert from Database Row**
-  factory Vehicle.fromDatabaseRow(Map<String, dynamic> row) {
+  factory Vehicle.fromDatabaseRow(Map<String, dynamic> json) {
+    if (json['owner'] == null || json['owner']['id'] == null) {
+      throw Exception("Owner ID is missing in database row.");
+    }
+
     return Vehicle(
-      id: int.tryParse(row['id'].toString()) ?? 0,
-      registreringsnummer: row['registreringsnummer'] ?? '',
-      typ: row['typ'] ?? '',
-      owner: Person.fromDatabaseRow({
-        'id': row['ownerId'],
-        'namn': row['ownerNamn'],
-        'personnummer': row['personnummer'],
-      }),
+      id: json['id'] as int,
+      registreringsnummer: json['registreringsnummer'] as String,
+      typ: json['typ'] as String,
+      owner: Person.fromDatabaseRow(json['owner']),
     );
   }
 
   // **Convert to Database Row**
   Map<String, dynamic> toDatabaseRow() {
+    print("⚠️ DEBUG: toDatabaseRow() - skickar ownerId: ${owner.id}");
     return {
       'id': id,
       'registreringsnummer': registreringsnummer,

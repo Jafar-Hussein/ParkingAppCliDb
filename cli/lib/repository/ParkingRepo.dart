@@ -1,8 +1,6 @@
 import 'dart:convert';
-
 import 'package:shared/src/model/Parking.dart';
 import 'package:shared/src/repository/Repository.dart';
-
 import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
 
@@ -11,76 +9,97 @@ class ParkingRepo implements Repository<Parking> {
   ParkingRepo._internal();
   static ParkingRepo get instance => _instance;
 
-  // Asynkron metod för att lägga till parkering
+  final String baseUrl = "http://localhost:8081/parkings";
+
+  /// **Create a new Parking entry**
   @override
   Future<Parking> create(Parking parking) async {
-    // send bag serialized as json over http to server at localhost:8080
-    final uri = Uri.parse("http://localhost:8080/parking");
+    final uri = Uri.parse(baseUrl);
 
-    Response response = await http.post(uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(parking.toJson()));
+    Response response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(parking.toDatabaseRow()), // Ensure correct structure
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("Failed to create parking: ${response.body}");
+    }
 
     final json = jsonDecode(response.body);
-
-    return Parking.fromJson(json);
+    return Parking.fromDatabaseRow(json);
   }
 
-  // Hämtar alla parkeringar asynkront
+  /// **Get all parkings**
   Future<List<Parking>> getAll() async {
-    final uri = Uri.parse("http://localhost:8080/parkings");
+    final uri = Uri.parse(baseUrl);
     final response = await http.get(
       uri,
       headers: {'Content-Type': 'application/json'},
     );
 
-    final json = jsonDecode(response.body);
+    if (response.statusCode != 200) {
+      throw Exception("Failed to fetch parkings: ${response.body}");
+    }
 
-    return (json as List).map((bag) => Parking.fromJson(bag)).toList();
+    final json = jsonDecode(response.body);
+    return (json as List).map((item) => Parking.fromDatabaseRow(item)).toList();
   }
 
-  // Hämtar en specifik parkering baserat på ID
+  /// **Get a parking by ID**
   @override
   Future<Parking?> getById(int id) async {
-    final uri = Uri.parse("http://localhost:8080/parkings/${id}");
+    final uri = Uri.parse("$baseUrl/$id");
 
     Response response = await http.get(
       uri,
       headers: {'Content-Type': 'application/json'},
     );
 
-    final json = jsonDecode(response.body);
+    if (response.statusCode == 404) {
+      return null; // No parking found
+    } else if (response.statusCode != 200) {
+      throw Exception("Failed to fetch parking: ${response.body}");
+    }
 
-    return Parking.fromJson(json);
+    final json = jsonDecode(response.body);
+    return Parking.fromDatabaseRow(json);
   }
 
-  // Uppdaterar en parkering asynkront
+  /// **Update a parking**
   @override
   Future<Parking> update(int id, Parking parking) async {
-    // send bag serialized as json over http to server at localhost:8080
-    final uri = Uri.parse("http://localhost:8080/Parkings/${id}");
+    final uri = Uri.parse("$baseUrl/$id");
 
-    Response response = await http.put(uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(parking.toJson()));
+    Response response = await http.put(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(parking.toDatabaseRow()), // Ensure correct format
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception("Failed to update parking: ${response.body}");
+    }
 
     final json = jsonDecode(response.body);
-
-    return Parking.fromJson(json);
+    return Parking.fromDatabaseRow(json);
   }
 
-  // Tar bort en parkering asynkront
+  /// **Delete a parking**
   @override
   Future<Parking> delete(int id) async {
-   final uri = Uri.parse("http://localhost:8080/parkings/${id}");
+    final uri = Uri.parse("$baseUrl/$id");
 
     Response response = await http.delete(
       uri,
       headers: {'Content-Type': 'application/json'},
     );
 
-    final json = jsonDecode(response.body);
+    if (response.statusCode != 200) {
+      throw Exception("Failed to delete parking: ${response.body}");
+    }
 
-    return Parking.fromJson(json);
+    final json = jsonDecode(response.body);
+    return Parking.fromDatabaseRow(json);
   }
 }
