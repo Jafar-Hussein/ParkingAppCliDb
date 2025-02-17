@@ -9,7 +9,7 @@ class ParkingSpaceRepo implements Repository<ParkingSpace> {
   ParkingSpaceRepo._internal();
   static ParkingSpaceRepo get instance => _instance;
 
-  final String baseUrl = "http://localhost:8081/parkingSpaces";
+  final String baseUrl = "http://localhost:8081/parkingspaces";
 
   /// **Create a new ParkingSpace**
   @override

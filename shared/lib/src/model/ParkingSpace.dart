@@ -45,11 +45,10 @@ class ParkingSpace {
 
   factory ParkingSpace.fromDatabaseRow(Map<String, dynamic> row) {
     return ParkingSpace(
-      id: row['id'] != null ? int.parse(row['id'].toString()) : 0,
-      address: row['address'],
-      pricePerHour: row['pricePerHour'] != null
-          ? double.tryParse(row['pricePerHour'].toString()) ?? 0.0
-          : 0.0,
+      id: int.tryParse(row['id'].toString()) ?? 0,
+      address: row['address']?.toString() ?? 'Okänd Adress', // 🛠 Undvik null
+      pricePerHour: double.tryParse(row['pricePerHour'].toString()) ??
+          0.0, // 🛠 Undvik null
     );
   }
 
@@ -60,5 +59,4 @@ class ParkingSpace {
       'pricePerHour': _pricePerHour,
     };
   }
-  
 }
