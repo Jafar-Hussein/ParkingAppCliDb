@@ -23,23 +23,24 @@ class Person {
 
   // **Convert from JSON**
   factory Person.fromJson(Map<String, dynamic> json) {
-    print("Parsing Person from JSON: $json");
+    if (!json.containsKey('id') || json['id'] == null) {
+      throw Exception("Fel: Person saknar ID!");
+    }
 
     return Person(
-      id: json.containsKey('id') && json['id'] != null
-          ? int.tryParse(json['id'].toString()) ?? 0
-          : 0, // Default to 0 if id is null or missing
-      namn: json['namn']?.toString() ?? '', // Ensure it’s a valid string
-      personnummer: json['personnummer']?.toString() ?? '',
+      id: int.tryParse(json['id'].toString()) ?? 0, // Konverterar ID säkert
+      namn:
+          json['namn']?.toString() ?? "Okänd", // Säkerställer en giltig sträng
+      personnummer: json['personnummer']?.toString() ?? "Okänd",
     );
   }
 
   // **Convert to JSON**
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'namn': namn,
-      'personnummer': personnummer,
+      "id": id,
+      "namn": namn,
+      "personnummer": personnummer,
     };
   }
 

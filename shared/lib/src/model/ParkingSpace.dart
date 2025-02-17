@@ -23,14 +23,31 @@ class ParkingSpace {
 
   /// **Konverterar från JSON och hanterar null/tomma strängar**
   factory ParkingSpace.fromJson(Map<String, dynamic> json) {
+    // Kontrollera att ID finns och är korrekt
+    int parsedId = 0;
+    if (json.containsKey('id') && json['id'] != null) {
+      parsedId = int.tryParse(json['id'].toString()) ?? 0;
+    }
+
+    // 🛠 Kontrollera att address är en sträng
+    String parsedAddress = json['address']?.toString() ?? 'Okänd';
+
+    // 🛠 Kontrollera att pricePerHour är en giltig double
+    double parsedPricePerHour = 0.0;
+    if (json.containsKey('pricePerHour') && json['pricePerHour'] != null) {
+      try {
+        parsedPricePerHour =
+            double.tryParse(json['pricePerHour'].toString()) ?? 0.0;
+      } catch (e) {
+        print(
+            "Varning: Kunde inte parsa 'pricePerHour', satt till 0.0 → $e");
+      }
+    }
+
     return ParkingSpace(
-      id: json.containsKey('id') && json['id'] != null
-          ? int.tryParse(json['id'].toString()) ?? 0 // Ensure id is never null
-          : 0,
-      address: json['address'] ?? '',
-      pricePerHour: json['pricePerHour'] != null
-          ? double.tryParse(json['pricePerHour'].toString()) ?? 0.0
-          : 0.0,
+      id: parsedId,
+      address: parsedAddress,
+      pricePerHour: parsedPricePerHour,
     );
   }
 

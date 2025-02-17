@@ -39,37 +39,30 @@ class Vehicle {
 
   // **Convert from JSON to `Vehicle` object**
   factory Vehicle.fromJson(Map<String, dynamic> json) {
-    print("DEBUG: Skapar Vehicle från JSON: $json");
+    // 🛠 Om ID saknas eller är null, sätt det till 0 (det genereras i databasen)
+    int vehicleId = json.containsKey('id') && json['id'] != null
+        ? int.tryParse(json['id'].toString()) ?? 0
+        : 0;
 
     // 🛠 Hantera om frontend skickar ownerId istället för owner-objekt
-    if (json.containsKey('ownerId')) {
-      return Vehicle(
-        id: json.containsKey('id') && json['id'] != null
-            ? int.tryParse(json['id'].toString()) ?? 0
-            : 0,
-        registreringsnummer: json['registreringsnummer'] ?? '',
-        typ: json['typ'] ?? '',
-        owner: Person(
-          // Vi skapar en dummy-Person med ownerId
-          id: json['ownerId'],
-          namn: '',
-          personnummer: '',
-        ),
+    Person owner;
+    if (json.containsKey('ownerId') && json['ownerId'] != null) {
+      owner = Person(
+        id: int.tryParse(json['ownerId'].toString()) ?? 0,
+        namn: 'Okänd',
+        personnummer: '',
       );
-    }
-
-    // 🛠 Hantera om frontend skickar owner som ett objekt
-    if (json['owner'] == null || !json['owner'].containsKey('id')) {
-      throw Exception("ERROR: JSON innehåller ingen giltig ownerId!");
+    } else if (json.containsKey('owner') && json['owner'] != null) {
+      owner = Person.fromJson(json['owner']);
+    } else {
+      owner = Person(id: 0, namn: "Okänd", personnummer: "");
     }
 
     return Vehicle(
-      id: json.containsKey('id') && json['id'] != null
-          ? int.tryParse(json['id'].toString()) ?? 0
-          : 0,
-      registreringsnummer: json['registreringsnummer'] ?? '',
-      typ: json['typ'] ?? '',
-      owner: Person.fromJson(json['owner']),
+      id: vehicleId, // Om det är 0, betyder det att det skapas och får ID av databasen
+      registreringsnummer: json['registreringsnummer']?.toString() ?? 'Okänd',
+      typ: json['typ']?.toString() ?? 'Okänd',
+      owner: owner,
     );
   }
 
@@ -99,7 +92,6 @@ class Vehicle {
 
   // **Convert to Database Row**
   Map<String, dynamic> toDatabaseRow() {
-    print("⚠️ DEBUG: toDatabaseRow() - skickar ownerId: ${owner.id}");
     return {
       'id': id,
       'registreringsnummer': registreringsnummer,

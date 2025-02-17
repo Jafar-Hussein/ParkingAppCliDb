@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:shared/src/model/Parking.dart';
 import 'package:shared/src/model/Person.dart';
 import 'package:shared/src/model/ParkingSpace.dart';
@@ -15,59 +17,39 @@ class ParkingRepo implements Repository<Parking> {
   Future<Parking> create(Parking parking) async {
     var conn = await Database.getConnection();
     try {
-      // Hämta pris per timme från parkeringsplatsen
-      var result = await conn.execute(
-        'SELECT pricePerHour FROM parkingspace WHERE id = :id',
-        {'id': parking.parkingSpace.id},
-      );
+      print("DEBUG: Skickar följande JSON till databasen:");
+      print(parking.toJson()); // 🛠 Skriver ut exakt vad som skickas
 
-      if (result.numOfRows == 0) {
-        throw Exception(
-            "Parkeringsplats ID ${parking.parkingSpace.id} hittades inte.");
-      }
-
-      double pricePerHour =
-          double.parse(result.rows.first.colByName('pricePerHour')!);
-
-      // Beräkna pris om parkeringen har avslutats
-      double totalPrice = parking.endTime != null
-          ? (parking.endTime!.difference(parking.startTime).inMinutes / 60) *
-              pricePerHour
-          : 0.0;
-
-      // Formatera tid till MySQL-format
-      String formattedStartTime = _formatDateTime(parking.startTime);
-      String? formattedEndTime =
-          parking.endTime != null ? _formatDateTime(parking.endTime!) : null;
-
-      // Infoga parkering i databasen
       await conn.execute(
         'INSERT INTO parking (vehicleId, parkingspaceId, startTime, endTime, price) '
         'VALUES (:vehicleId, :parkingspaceId, :startTime, :endTime, :price)',
         {
           'vehicleId': parking.vehicle.id,
           'parkingspaceId': parking.parkingSpace.id,
-          'startTime': formattedStartTime,
-          'endTime': formattedEndTime,
-          'price': totalPrice,
+          'startTime': _formatDateTime(parking.startTime),
+          'endTime': parking.endTime != null
+              ? _formatDateTime(parking.endTime!)
+              : null,
+          'price': parking.price,
         },
       );
 
-      // Hämta ID på den nyligen skapade parkeringen
+      // Hämta ID på den nyskapade parkeringen
       var newParkingResult =
           await conn.execute('SELECT LAST_INSERT_ID() AS id');
-      int newId = int.parse(newParkingResult.rows.first.colByName('id')!);
+      int newId = int.tryParse(
+              newParkingResult.rows.first.colByName('id')?.toString() ?? '0') ??
+          0;
 
-      print('Ny parkering tillagd: ID $newId, Pris: $totalPrice kr');
+      // Hämta parkeringen från databasen för att verifiera att den är korrekt
+      var newParkingData = await getById(newId);
 
-      return Parking(
-        id: newId,
-        vehicle: parking.vehicle,
-        parkingSpace: parking.parkingSpace,
-        startTime: parking.startTime,
-        endTime: parking.endTime,
-        price: totalPrice,
-      );
+      // 🛠 Debug: Skriver ut JSON-data från databasen
+      print("DEBUG: JSON-data från databasen efter skapande:");
+      print(newParkingData?.toJson());
+
+      return newParkingData ??
+          (throw Exception("Fel: Kunde inte hämta nyskapad parkering"));
     } catch (e) {
       print('Fel: Kunde inte skapa parkering → $e');
       throw Exception('Kunde inte skapa parkering.');
@@ -95,6 +77,10 @@ class ParkingRepo implements Repository<Parking> {
       print('Hämtade rader: ${results.numOfRows}');
 
       for (final row in results.rows) {
+        print("DEBUG: Rad från DB → ID: ${row.colByName('id')}, "
+            "Fordon: ${row.colByName('registreringsnummer')}, "
+            "Parkeringsplats: ${row.colByName('address')}, "
+            "Kostnad: ${row.colByName('price')}");
         parkings.add(_parseParking(row));
       }
     } catch (e) {
@@ -125,8 +111,11 @@ class ParkingRepo implements Repository<Parking> {
       );
 
       if (results.rows.isNotEmpty) {
-        return _parseParking(results.rows.first);
+        var row = results.rows.first;
+        return _parseParking(row);
       }
+
+      print("DEBUG: Ingen parkering hittades med ID: $id");
       return null;
     } catch (e) {
       print('Fel: Kunde inte hämta parkering med ID $id → $e');
@@ -141,7 +130,32 @@ class ParkingRepo implements Repository<Parking> {
   Future<Parking> update(int id, Parking parking) async {
     var conn = await Database.getConnection();
     try {
-      // Fetch ParkingSpace to get correct pricePerHour
+      print("Uppdaterar parkering ID $id");
+      print("DEBUG: Ny data → ${jsonEncode(parking.toJson())}");
+
+      // Kontrollera om parkeringen existerar innan vi uppdaterar
+      var checkExist = await conn.execute(
+        'SELECT COUNT(*) as count FROM parking WHERE id = :id',
+        {'id': id},
+      );
+
+      int count = checkExist.rows.first.colByName('count') != null
+          ? int.parse(checkExist.rows.first.colByName('count')!)
+          : 0;
+
+      if (count == 0) {
+        throw Exception("Parkering med ID $id hittades inte!");
+      }
+
+      // 🔍 Kontrollera om alla värden redan är identiska i databasen
+      var existingRow = await getById(id);
+      if (existingRow != null &&
+          existingRow.toJson().toString() == parking.toJson().toString()) {
+        print("Ingen uppdatering gjord eftersom värdena är identiska.");
+        return existingRow; // Returnera befintlig data utan att kasta fel
+      }
+
+      // 🏷 Hämta pris per timme för parkering
       var result = await conn.execute(
         'SELECT pricePerHour FROM parkingspace WHERE id = :id',
         {'id': parking.parkingSpace.id},
@@ -155,38 +169,65 @@ class ParkingRepo implements Repository<Parking> {
       double pricePerHour =
           double.parse(result.rows.first.colByName('pricePerHour')!);
 
-      // Recalculate price if parking has ended
+      // 🏷 Beräkna uppdaterad kostnad
       double updatedPrice = parking.endTime != null
           ? (parking.endTime!.difference(parking.startTime).inMinutes / 60) *
               pricePerHour
           : 0.0;
 
-      // Format date for MySQL
+      // 🏷 Format datum för MySQL
       String formattedStartTime = _formatDateTime(parking.startTime);
       String? formattedEndTime =
           parking.endTime != null ? _formatDateTime(parking.endTime!) : null;
 
-      // Update parking record
-      await conn.execute(
-        'UPDATE parking SET vehicleId = :vehicleId, parkingspaceId = :parkingspaceId, '
-        'startTime = :startTime, endTime = :endTime, price = :price WHERE id = :id',
+      // Kör UPDATE-frågan
+      var updateResult = await conn.execute(
+        '''
+      UPDATE parking 
+      SET vehicleId = :vehicleId, 
+          parkingspaceId = :parkingspaceId, 
+          startTime = :startTime, 
+          endTime = :endTime, 
+          price = :price 
+      WHERE id = :id
+      ''',
         {
           'id': id,
           'vehicleId': parking.vehicle.id,
           'parkingspaceId': parking.parkingSpace.id,
           'startTime': formattedStartTime,
           'endTime': formattedEndTime,
-          'price': updatedPrice, // ✅ Fix: Store updated price
+          'price': updatedPrice,
         },
       );
 
-      print('Parkering uppdaterad: ID $id, Nytt pris: $updatedPrice kr');
+      // Kolla om UPDATE påverkade någon rad
+      if (updateResult.numOfRows == 0) {
+        var existingRowAfter = await getById(id);
+        if (existingRowAfter != null &&
+            existingRowAfter.toJson().toString() ==
+                parking.toJson().toString()) {
+          print("Ingen ändring behövdes, värdena var redan samma.");
+          return existingRowAfter;
+        }
+        throw Exception("Uppdatering misslyckades, ingen rad ändrades!");
+      }
 
-      return await getById(id) ??
-          (throw Exception("Parkering kunde inte uppdateras"));
-    } catch (e) {
-      print('Fel: Kunde inte uppdatera parkering → $e');
-      throw Exception('Kunde inte uppdatera parkering.');
+      print("Parkering uppdaterad! ID $id, Nytt pris: $updatedPrice kr");
+
+      // Hämta parkeringen efter uppdatering och logga den
+      var updatedParking = await getById(id);
+      if (updatedParking == null) {
+        throw Exception("Parkeringen kunde inte hittas efter uppdatering!");
+      }
+
+      print(
+          "DEBUG: Hämtade parkering efter update: ${jsonEncode(updatedParking.toJson())}");
+      return updatedParking;
+    } catch (e, stacktrace) {
+      print("Fel vid uppdatering i backend: $e");
+      print(stacktrace);
+      throw Exception("Kunde inte uppdatera parkering: $e");
     } finally {
       await conn.close();
     }

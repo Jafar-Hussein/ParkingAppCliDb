@@ -68,18 +68,12 @@ class VehicleCli {
       if (ownerId == null || ownerId <= 0)
         throw FormatException("Ogiltigt ID-format.");
 
-      // 🛠 Debugga att ownerId hämtas korrekt
-      print("DEBUG: ownerId som skickas: $ownerId");
 
       // Hämta ägaren från databasen
       Person? owner = await personRepo.getById(ownerId);
       if (owner == null) {
         throw Exception("Ingen ägare hittades med ID $ownerId.");
       }
-
-      // 🛠 Debugga att personen hämtas korrekt
-      print("DEBUG: Hämtad person - ID: ${owner.id}, Namn: ${owner.namn}");
-
       // Skapa nytt fordon
       Vehicle newVehicle = Vehicle(
         id: 1, // Tillfälligt ID, sätts av databasen

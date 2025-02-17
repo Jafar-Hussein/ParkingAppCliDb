@@ -69,10 +69,6 @@ class VehicleRepo implements Repository<Vehicle> {
             'personnummer': row.colByName('personnummer'),
           }
         };
-
-        // 🛠 Debug: Skriver ut exakt hur varje rad ser ut innan konvertering
-        print("DEBUG: Skapar Vehicle från DatabaseRow: $rowMap");
-
         vehicles.add(Vehicle.fromDatabaseRow(rowMap));
       }
     } catch (e) {
@@ -142,7 +138,6 @@ class VehicleRepo implements Repository<Vehicle> {
   Future<Vehicle> update(int id, Vehicle vehicle) async {
     var conn = await Database.getConnection();
     try {
-      print("DEBUG: Uppdaterar fordon med ID: $id...");
 
       await conn.execute(
         '''
@@ -183,8 +178,6 @@ class VehicleRepo implements Repository<Vehicle> {
   Future<Vehicle> delete(int id) async {
     var conn = await Database.getConnection();
     try {
-      print("DEBUG: Försöker radera fordon med ID: $id...");
-
       // Kontrollera om fordonet finns innan radering
       var result = await conn.execute(
         'SELECT id FROM vehicle WHERE id = :id',

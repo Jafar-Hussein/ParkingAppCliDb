@@ -16,32 +16,34 @@ class VehicleRepo implements Repository<Vehicle> {
   Future<Vehicle> create(Vehicle vehicle) async {
     final uri = Uri.parse(baseUrl);
 
-    // 🛠 Debug: Se till att ownerId finns och är korrekt
-    print("Skickar fordon till API: ${jsonEncode({
-          "id": vehicle.id,
-          "registreringsnummer": vehicle.registreringsnummer,
-          "typ": vehicle.typ,
-          "ownerId": vehicle.owner.id // ✅ ownerId måste vara INT och inte null
-        })}");
+    // ✅ Skicka endast nödvändig data (utan id, eftersom databasen genererar det)
+    Map<String, dynamic> vehicleJson = {
+      "registreringsnummer": vehicle.registreringsnummer,
+      "typ": vehicle.typ,
+      "ownerId": vehicle.owner.id, // ✅ ownerId måste vara en INT
+    };
+
+    print("Skickar fordon till API: ${jsonEncode(vehicleJson)}");
 
     Response response = await http.post(
       uri,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        "id": vehicle.id,
-        "registreringsnummer": vehicle.registreringsnummer,
-        "typ": vehicle.typ,
-        "ownerId": vehicle.owner.id // ✅ ownerId måste vara en INT
-      }),
+      body: jsonEncode(vehicleJson),
     );
-
 
     if (response.statusCode != 200) {
       throw Exception("Failed to create Vehicle: ${response.body}");
     }
 
     final json = jsonDecode(response.body);
-    return Vehicle.fromDatabaseRow(json);
+
+    // ✅ Kontrollera att backend returnerar ett giltigt ID
+    if (!json.containsKey('id') || json['id'] == null) {
+      throw Exception(
+          "Fel: Backend returnerade inget giltigt ID för fordonet.");
+    }
+
+    return Vehicle.fromJson(json);
   }
 
   /// **Get all Vehicles**

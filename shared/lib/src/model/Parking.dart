@@ -50,21 +50,21 @@ class Parking {
 
   // Convert from JSON
   factory Parking.fromJson(Map<String, dynamic> json) {
+    if (!json.containsKey('vehicle') || json['vehicle'] == null) {
+      throw Exception("Fel: 'vehicle' saknas i JSON.");
+    }
+
+    if (!json.containsKey('parkingSpace') || json['parkingSpace'] == null) {
+      throw Exception("Fel: 'parkingSpace' saknas i JSON.");
+    }
+
     return Parking(
-      id: json.containsKey('id') && json['id'] != null
-          ? int.tryParse(json['id'].toString()) ?? 0
-          : 0,
+      id: json['id'] ?? 0,
       vehicle: Vehicle.fromJson(json['vehicle']),
       parkingSpace: ParkingSpace.fromJson(json['parkingSpace']),
-      startTime: json.containsKey('startTime') && json['startTime'] != null
-          ? DateTime.parse(json['startTime'])
-          : DateTime.now(),
-      endTime: json.containsKey('endTime') && json['endTime'] != null
-          ? DateTime.parse(json['endTime'])
-          : null,
-      price: json.containsKey('price') && json['price'] != null
-          ? double.tryParse(json['price'].toString()) ?? 0.0
-          : 0.0,
+      startTime: DateTime.parse(json['startTime']),
+      endTime: json['endTime'] != null ? DateTime.parse(json['endTime']) : null,
+      price: json['price'] ?? 0.0,
     );
   }
 
@@ -72,38 +72,40 @@ class Parking {
   Map<String, dynamic> toJson() {
     return {
       'id': _id,
-      'vehicle': {'id': _vehicle.id},
-      'parkingSpace': {'id': _parkingSpace.id},
-      'startTime':
-          _startTime.toString().split('.')[0], // Ensures correct format
-      'endTime': _endTime != null ? _endTime.toString().split('.')[0] : null,
+      'vehicle': _vehicle.toJson(), // ✅ Skicka hela objektet
+      'parkingSpace': _parkingSpace.toJson(),
+      'startTime': _startTime.toIso8601String(),
+      'endTime': _endTime != null ? _endTime!.toIso8601String() : null,
       'price': _price,
     };
   }
 
-  factory Parking.fromDatabaseRow(Map<String, dynamic> row) {
+  factory Parking.fromDatabaseRow(Map<String, dynamic> json) {
+    // 🛠 Fix: Kontrollera att alla fält finns i JSON
+    if (!json.containsKey('vehicle') || json['vehicle'] == null) {
+      throw Exception("Fel: 'vehicle' saknas i JSON.");
+    }
+    if (!json.containsKey('parkingSpace') || json['parkingSpace'] == null) {
+      throw Exception("Fel: 'parkingSpace' saknas i JSON.");
+    }
+    if (!json.containsKey('price')) {
+      throw Exception("Fel: 'price' saknas i JSON.");
+    }
+
     return Parking(
-      id: row['id'],
-      vehicle: Vehicle(
-        id: row['vehicleId'],
-        registreringsnummer: row['registreringsnummer'] ?? 'Okänd',
-        typ: row['typ'] ?? 'Okänd',
-        owner: Person(
-          id: row['ownerId'] ?? 0,
-          namn: row['namn'] ?? 'Okänd',
-          personnummer: row['personnummer'] ?? '',
-        ),
-      ),
-      parkingSpace: ParkingSpace(
-        id: row['parkingSpaceId'],
-        address: row['address'] ?? 'Okänd',
-        pricePerHour: row['pricePerHour'] != null
-            ? double.tryParse(row['pricePerHour'].toString()) ?? 0.0
-            : 0.0,
-      ),
-      startTime: DateTime.parse(row['startTime']),
-      endTime: row['endTime'] != null ? DateTime.parse(row['endTime']) : null,
-      price: row['price'] ?? 0.0,
+      id: json['id'] ?? 0,
+
+      // ✅ Hämta hela vehicle-objektet direkt från JSON
+      vehicle: Vehicle.fromJson(json['vehicle']),
+
+      // ✅ Hämta hela parkingSpace-objektet direkt från JSON
+      parkingSpace: ParkingSpace.fromJson(json['parkingSpace']),
+
+      startTime: DateTime.parse(json['startTime']),
+      endTime: json['endTime'] != null ? DateTime.parse(json['endTime']) : null,
+
+      // ✅ Sätt priset korrekt
+      price: double.tryParse(json['price'].toString()) ?? 0.0,
     );
   }
 
