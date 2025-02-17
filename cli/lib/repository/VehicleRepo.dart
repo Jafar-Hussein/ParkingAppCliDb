@@ -35,10 +35,8 @@ class VehicleRepo implements Repository<Vehicle> {
       }),
     );
 
-    print("API response: ${response.body}");
 
     if (response.statusCode != 200) {
-      print("API-fel: ${response.body}");
       throw Exception("Failed to create Vehicle: ${response.body}");
     }
 
@@ -91,7 +89,12 @@ class VehicleRepo implements Repository<Vehicle> {
     Response response = await http.put(
       uri,
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(vehicle.toDatabaseRow()), // Ensure correct format
+      body: jsonEncode({
+        "id": vehicle.id,
+        "registreringsnummer": vehicle.registreringsnummer,
+        "typ": vehicle.typ,
+        "ownerId": vehicle.owner.id, // ✅ ownerId måste vara en INT
+      }),
     );
 
     if (response.statusCode != 200) {

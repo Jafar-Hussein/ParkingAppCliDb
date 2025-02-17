@@ -90,26 +90,46 @@ class VehicleRepo implements Repository<Vehicle> {
     var conn = await Database.getConnection();
     try {
       var results = await conn.execute(
-        'SELECT vehicle.id, vehicle.registreringsnummer, vehicle.typ, '
-        'person.id AS ownerId, person.namn AS ownerNamn, person.personnummer '
-        'FROM vehicle '
-        'INNER JOIN person ON vehicle.ownerId = person.id '
-        'WHERE vehicle.id = :id',
+        '''
+      SELECT vehicle.id, vehicle.registreringsnummer, vehicle.typ, 
+             person.id AS ownerId, person.namn AS ownerNamn, person.personnummer
+      FROM vehicle 
+      INNER JOIN person ON vehicle.ownerId = person.id 
+      WHERE vehicle.id = :id
+      ''',
         {'id': id},
       );
 
-      if (results.rows.isNotEmpty) {
-        var row = results.rows.first;
-        return Vehicle.fromDatabaseRow({
-          'id': row.colByName('id'),
-          'registreringsnummer': row.colByName('registreringsnummer'),
-          'typ': row.colByName('typ'),
-          'ownerId': row.colByName('ownerId'),
-          'ownerNamn': row.colByName('ownerNamn'),
-          'personnummer': row.colByName('personnummer'),
-        });
+      if (results.rows.isEmpty) {
+        print("ERROR: Inget fordon hittades med ID $id.");
+        return null;
       }
-      return null;
+
+      var row = results.rows.first;
+
+      // 🛠️ Konvertera ID-fält till INT och hantera nullvärden
+      int vehicleId = int.tryParse(row.colByName('id').toString()) ?? 0;
+      int ownerId = int.tryParse(row.colByName('ownerId').toString()) ?? 0;
+
+      if (ownerId == 0) {
+        print("ERROR: Owner ID saknas i databasen för fordon ID $id.");
+        throw Exception("Owner ID saknas i database row!");
+      }
+
+      // 🛠️ Skapa fordon från databasraden
+      Vehicle vehicle = Vehicle(
+        id: vehicleId,
+        registreringsnummer: row.colByName('registreringsnummer') ?? 'Okänt',
+        typ: row.colByName('typ') ?? 'Okänt',
+        owner: Person(
+          id: ownerId,
+          namn: row.colByName('ownerNamn') ?? 'Okänd',
+          personnummer: row.colByName('personnummer') ?? 'Okänd',
+        ),
+      );
+
+      print("Hämtat fordon: ${vehicle.toJson()}");
+      return vehicle;
     } catch (e) {
       print('Fel: Kunde inte hämta fordon med ID $id → $e');
       return Future.error('Misslyckades med att hämta fordon.');
@@ -118,19 +138,37 @@ class VehicleRepo implements Repository<Vehicle> {
     }
   }
 
-  /// **Uppdaterar ett fordon i databasen**
   @override
   Future<Vehicle> update(int id, Vehicle vehicle) async {
     var conn = await Database.getConnection();
     try {
+      print("DEBUG: Uppdaterar fordon med ID: $id...");
+
       await conn.execute(
-        'UPDATE vehicle SET registreringsnummer = :registreringsnummer, '
-        'typ = :typ, ownerId = :ownerId WHERE id = :id',
-        vehicle.toDatabaseRow()..addAll({'id': id}),
+        '''
+      UPDATE vehicle 
+      SET registreringsnummer = :registreringsnummer, 
+          typ = :typ, 
+          ownerId = :ownerId 
+      WHERE id = :id
+      ''',
+        {
+          'registreringsnummer': vehicle.registreringsnummer,
+          'typ': vehicle.typ,
+          'ownerId': vehicle.owner.id, // 🔥 Se till att ownerId är en INT
+          'id': id
+        },
       );
 
-      return await getById(id) ??
-          (throw Exception("Fordon ej hittat efter uppdatering"));
+      // Hämta det uppdaterade fordonet direkt efter uppdateringen
+      Vehicle? updatedVehicle = await getById(id);
+
+      if (updatedVehicle == null) {
+        throw Exception("Fordon ej hittat efter uppdatering");
+      }
+
+      print("Fordon uppdaterat: ${updatedVehicle.toJson()}");
+      return updatedVehicle;
     } catch (e) {
       print('Fel: Kunde inte uppdatera fordon → $e');
       throw Exception('Kunde inte uppdatera fordon.');

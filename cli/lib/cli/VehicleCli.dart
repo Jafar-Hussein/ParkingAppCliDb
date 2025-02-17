@@ -129,55 +129,62 @@ class VehicleCli {
       return;
     }
 
-    Vehicle? existingVehicle = await vehicleRepo.getById(id);
-    if (existingVehicle == null) {
-      print("Inget fordon hittades med ID $id.");
-      return;
-    }
-
-    print(
-        "Nuvarande detaljer: Registreringsnummer: ${existingVehicle.registreringsnummer}, Typ: ${existingVehicle.typ}, Ägare: ${existingVehicle.owner.namn}");
-
-    stdout
-        .write("Ange nytt registreringsnummer (lämna tomt för att behålla): ");
-    String newRegNumber = userInput.getUserInput();
-    if (newRegNumber.isEmpty) {
-      newRegNumber = existingVehicle.registreringsnummer;
-    }
-
-    stdout.write("Ange ny fordonstyp (lämna tomt för att behålla): ");
-    String newType = userInput.getUserInput();
-    if (newType.isEmpty) {
-      newType = existingVehicle.typ;
-    }
-
-    stdout.write("Ange ny ägarens ID (lämna tomt för att behålla): ");
-    int? newOwnerId = int.tryParse(userInput.getUserInput());
-    Person newOwner = existingVehicle.owner;
-
-    if (newOwnerId != null) {
-      Person? potentialNewOwner = await personRepo.getById(newOwnerId);
-      if (potentialNewOwner != null) {
-        newOwner = potentialNewOwner;
+    try {
+      Vehicle? existingVehicle = await vehicleRepo.getById(id);
+      if (existingVehicle == null) {
+        print("Inget fordon hittades med ID $id.");
+        return;
       }
+
+      print(
+          "Nuvarande detaljer: Registreringsnummer: ${existingVehicle.registreringsnummer}, Typ: ${existingVehicle.typ}, Ägare: ${existingVehicle.owner.id}");
+
+      stdout.write(
+          "Ange nytt registreringsnummer (lämna tomt för att behålla): ");
+      String newRegNumber = userInput.getUserInput();
+      if (newRegNumber.isEmpty) {
+        newRegNumber = existingVehicle.registreringsnummer;
+      }
+
+      stdout.write("Ange ny fordonstyp (lämna tomt för att behålla): ");
+      String newType = userInput.getUserInput();
+      if (newType.isEmpty) {
+        newType = existingVehicle.typ;
+      }
+
+      stdout.write("Ange ny ägarens ID (lämna tomt för att behålla): ");
+      String ownerInput = userInput.getUserInput();
+      int? newOwnerId = ownerInput.isEmpty
+          ? existingVehicle.owner.id
+          : int.tryParse(ownerInput);
+
+      if (newOwnerId == null) {
+        print("Ogiltigt ägar-ID, försöker behålla befintlig ägare.");
+        newOwnerId = existingVehicle.owner.id;
+      }
+
+      Person? newOwner = await personRepo.getById(newOwnerId);
+      if (newOwner == null) {
+        print(
+            "Ingen ägare hittades med ID $newOwnerId. Behåller befintlig ägare.");
+        newOwner = existingVehicle.owner;
+      }
+
+      Vehicle updatedVehicle = Vehicle(
+        id: existingVehicle.id,
+        registreringsnummer: newRegNumber,
+        typ: newType,
+        owner: newOwner,
+      );
+
+      await vehicleRepo.update(id, updatedVehicle);
+
+      print("\nFordon uppdaterat!\n");
+
+      await viewAllVehicles(vehicleRepo);
+    } catch (e) {
+      print("Fel vid uppdatering av fordon: $e");
     }
-
-    Vehicle updatedVehicle = Vehicle(
-      id: existingVehicle.id,
-      registreringsnummer: newRegNumber,
-      typ: newType,
-      owner: newOwner,
-    );
-
-    await vehicleRepo.update(id, updatedVehicle);
-
-    // **Lösning: Vänta en kort tid innan ny hämtning**
-    await Future.delayed(Duration(milliseconds: 200));
-
-    print("\nFordon uppdaterat!\n");
-
-    // **Tvinga hämtning av den senaste listan från databasen**
-    await viewAllVehicles(vehicleRepo);
   }
 
   // Tar bort ett fordon
