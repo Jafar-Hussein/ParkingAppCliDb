@@ -137,18 +137,18 @@ Uppdaterar ett specifikt fordon baserat på ID.
 
 ```
 
-###DELETE /vehicles/<id>
+### DELETE /vehicles/<id>
 Tar bort ett specifikt fordon baserat på ID.
 
 ##Personer (Persons)
 
-###GET /persons
+### GET /persons
 Hämtar alla personer.
 
-###GET /persons/<id>
+### GET /persons/<id>
 Hämtar en specifik person baserat på ID.
 
-###POST /persons
+### POST /persons
 Skapar en ny person.
 
 **Request body example:**
@@ -162,7 +162,7 @@ Skapar en ny person.
 
 ```
 
-###PUT /persons/<id>
+### PUT /persons/<id>
 Uppdaterar en specifik person baserat på ID.
 
 **Request body example:**
@@ -173,15 +173,15 @@ Uppdaterar en specifik person baserat på ID.
 }
 ```
 
-###DELETE /persons/<id>
+### DELETE /persons/<id>
 Tar bort en specifik person baserat på ID.
 
 ##Parkeringsplatser (Parking Spaces)
 
-###GET /parkingspaces
+### GET /parkingspaces
 Hämtar alla parkeringsplatser.
 
-###GET /parkingspaces/<id>
+### GET /parkingspaces/<id>
 Hämtar en specifik parkeringsplats baserat på ID.
 
 ###POST /parkingspaces
@@ -195,7 +195,7 @@ Skapar en ny parkeringsplats.
 
 ```
 
-###PUT /parkingspaces/<id>
+### PUT /parkingspaces/<id>
 Uppdaterar en specifik parkeringsplats baserat på ID.
 **Request body example:**
 ```json
@@ -205,5 +205,5 @@ Uppdaterar en specifik parkeringsplats baserat på ID.
 }
 ```
 
-###DELETE /parkingspaces/<id>
+### DELETE /parkingspaces/<id>
 Tar bort en specifik parkeringsplats baserat på ID.
