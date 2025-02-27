@@ -47,7 +47,7 @@ CREATE TABLE `parking` (
    CONSTRAINT `parking_ibfk_1` FOREIGN KEY (`vehicleId`) REFERENCES `vehicle` (`id`),
    CONSTRAINT `parking_ibfk_2` FOREIGN KEY (`parkingSpaceId`) REFERENCES `parkingspace` (`id`)
 );
-
+```
 
 ## Installation
 
