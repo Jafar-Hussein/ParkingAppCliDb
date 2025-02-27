@@ -16,11 +16,11 @@ class VehicleRepo implements Repository<Vehicle> {
   Future<Vehicle> create(Vehicle vehicle) async {
     final uri = Uri.parse(baseUrl);
 
-    // ✅ Skicka endast nödvändig data (utan id, eftersom databasen genererar det)
+    // Skicka endast nödvändig data (utan id, eftersom databasen genererar det)
     Map<String, dynamic> vehicleJson = {
       "registreringsnummer": vehicle.registreringsnummer,
       "typ": vehicle.typ,
-      "ownerId": vehicle.owner.id, // ✅ ownerId måste vara en INT
+      "ownerId": vehicle.owner.id, // ownerId måste vara en INT
     };
 
     print("Skickar fordon till API: ${jsonEncode(vehicleJson)}");
@@ -37,7 +37,7 @@ class VehicleRepo implements Repository<Vehicle> {
 
     final json = jsonDecode(response.body);
 
-    // ✅ Kontrollera att backend returnerar ett giltigt ID
+    // Kontrollera att backend returnerar ett giltigt ID
     if (!json.containsKey('id') || json['id'] == null) {
       throw Exception(
           "Fel: Backend returnerade inget giltigt ID för fordonet.");

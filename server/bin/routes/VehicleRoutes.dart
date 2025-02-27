@@ -12,11 +12,25 @@ class VehicleRoutes {
 
     // Hämta alla fordon
     router.get('/', (Request req) async {
-      final vehicles = await vehicleRepo.getAll();
-      final jsonResponse =
-          jsonEncode(vehicles.map((v) => v.toJson()).toList());
-      return Response.ok(jsonResponse,
-          headers: {'Content-Type': 'application/json'});
+      try {
+        final vehicles = await vehicleRepo.getAll();
+        final jsonResponse =
+            jsonEncode(vehicles.map((v) => v.toJson()).toList());
+        return Response.ok(jsonResponse,
+            headers: {'Content-Type': 'application/json'});
+      } catch (e) {
+        // Logga felet för felsökning
+        print('Fel vid hämtning av fordon: $e');
+
+        // Returnera ett 500-intern serverfel med ett användarvänligt meddelande
+        return Response.internalServerError(
+            body: jsonEncode({
+              'error': 'Ett fel inträffade vid hämtning av fordon.',
+              'details': e
+                  .toString(), // Detta kan vara användbart för utvecklare men bör tas bort i produktion
+            }),
+            headers: {'Content-Type': 'application/json'});
+      }
     });
 
     // Hämta ett specifikt fordon
@@ -34,7 +48,7 @@ class VehicleRoutes {
             headers: {'Content-Type': 'application/json'});
       }
     });
-  // **Skapa ett nytt fordon (ID genereras automatiskt)**
+    // **Skapa ett nytt fordon (ID genereras automatiskt)**
     router.post('/', (Request req) async {
       try {
         final body = await req.readAsString();

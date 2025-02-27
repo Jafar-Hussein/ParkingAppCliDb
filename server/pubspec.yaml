@@ -14,6 +14,7 @@ dependencies:
   shared: 
     path: '../shared'
   shelf_cors_headers: ^0.1.5
+  shelf_test_handler: ^2.0.2
 
 dev_dependencies:
   http: ^0.13.0

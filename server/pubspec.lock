@@ -288,6 +288,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.2"
+  shelf_test_handler:
+    dependency: "direct main"
+    description:
+      name: shelf_test_handler
+      sha256: fcd21b7ed1bb3caca5af6fd8eb808e630333541b80b939a2d4a3ada956e7c6b8
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.2"
   shelf_web_socket:
     dependency: transitive
     description:

@@ -98,10 +98,6 @@ class ParkingRepo implements Repository<Parking> {
         body: jsonEncode(jsonBody), // 🔥 Använd `toJson()` istället!
       );
 
-      // 🔍 Debug: Logga svaret från backend
-      print("DEBUG: Response Status Code → ${response.statusCode}");
-      print("DEBUG: Response Body → ${response.body}");
-
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
         return Parking.fromJson(

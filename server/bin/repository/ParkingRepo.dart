@@ -17,12 +17,9 @@ class ParkingRepo implements Repository<Parking> {
   Future<Parking> create(Parking parking) async {
     var conn = await Database.getConnection();
     try {
-      print("DEBUG: Skickar följande JSON till databasen:");
-      print(parking.toJson()); // 🛠 Skriver ut exakt vad som skickas
-
-      await conn.execute(
+      var result = await conn.execute(
         'INSERT INTO parking (vehicleId, parkingspaceId, startTime, endTime, price) '
-        'VALUES (:vehicleId, :parkingspaceId, :startTime, :endTime, :price)',
+        'VALUES (:vehicleId, :parkingspaceId, :startTime, :endTime, :price) RETURNING id',
         {
           'vehicleId': parking.vehicle.id,
           'parkingspaceId': parking.parkingSpace.id,
@@ -34,25 +31,13 @@ class ParkingRepo implements Repository<Parking> {
         },
       );
 
-      // Hämta ID på den nyskapade parkeringen
-      var newParkingResult =
-          await conn.execute('SELECT LAST_INSERT_ID() AS id');
-      int newId = int.tryParse(
-              newParkingResult.rows.first.colByName('id')?.toString() ?? '0') ??
-          0;
-
-      // Hämta parkeringen från databasen för att verifiera att den är korrekt
-      var newParkingData = await getById(newId);
-
-      // 🛠 Debug: Skriver ut JSON-data från databasen
-      print("DEBUG: JSON-data från databasen efter skapande:");
-      print(newParkingData?.toJson());
-
-      return newParkingData ??
+      int newId =
+          int.tryParse(result.rows.first.colByName('id')?.toString() ?? '0') ??
+              0;
+      return await getById(newId) ??
           (throw Exception("Fel: Kunde inte hämta nyskapad parkering"));
     } catch (e) {
-      print('Fel: Kunde inte skapa parkering → $e');
-      throw Exception('Kunde inte skapa parkering.');
+      throw Exception('Kunde inte skapa parkering: $e');
     } finally {
       await conn.close();
     }
@@ -64,15 +49,15 @@ class ParkingRepo implements Repository<Parking> {
     var conn = await Database.getConnection();
     List<Parking> parkings = [];
     try {
-      var results = await conn.execute(
-          'SELECT p.id, p.vehicleId, p.parkingspaceId, p.startTime, p.endTime, p.price, '
-          'v.registreringsnummer, v.typ, v.ownerId, '
-          'ps.address, ps.pricePerHour, '
-          'pr.namn, pr.personnummer '
-          'FROM parking p '
-          'JOIN vehicle v ON p.vehicleId = v.id '
-          'JOIN parkingspace ps ON p.parkingspaceId = ps.id '
-          'JOIN person pr ON v.ownerId = pr.id');
+      var results = await conn.execute('''
+      SELECT p.id, p.vehicleId, p.parkingspaceId, p.startTime, p.endTime, p.price, 
+             v.registreringsnummer, v.typ, v.ownerId, 
+             ps.address, ps.pricePerHour, pr.namn, pr.personnummer 
+      FROM parking p
+      INNER JOIN vehicle v ON p.vehicleId = v.id
+      INNER JOIN parkingspace ps ON p.parkingspaceId = ps.id
+      INNER JOIN person pr ON v.ownerId = pr.id
+    ''');
 
       print('Hämtade rader: ${results.numOfRows}');
 
@@ -97,18 +82,16 @@ class ParkingRepo implements Repository<Parking> {
   Future<Parking?> getById(int id) async {
     var conn = await Database.getConnection();
     try {
-      var results = await conn.execute(
-        'SELECT p.id, p.vehicleId, p.parkingspaceId, p.startTime, p.endTime, p.price, '
-        'v.registreringsnummer, v.typ, v.ownerId, '
-        'ps.address, ps.pricePerHour, '
-        'pr.namn, pr.personnummer '
-        'FROM parking p '
-        'JOIN vehicle v ON p.vehicleId = v.id '
-        'JOIN parkingspace ps ON p.parkingspaceId = ps.id '
-        'JOIN person pr ON v.ownerId = pr.id '
-        'WHERE p.id = :id',
-        {'id': id},
-      );
+      var results = await conn.execute('''
+      SELECT p.id, p.vehicleId, p.parkingspaceId, p.startTime, p.endTime, p.price, 
+             v.registreringsnummer, v.typ, v.ownerId, 
+             ps.address, ps.pricePerHour, pr.namn, pr.personnummer 
+      FROM parking p
+      INNER JOIN vehicle v ON p.vehicleId = v.id
+      INNER JOIN parkingspace ps ON p.parkingspaceId = ps.id
+      INNER JOIN person pr ON v.ownerId = pr.id
+      WHERE p.id = :id
+    ''', {'id': id});
 
       if (results.rows.isNotEmpty) {
         var row = results.rows.first;

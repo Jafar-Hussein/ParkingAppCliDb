@@ -12,11 +12,25 @@ class ParkingSpaceRoutes {
 
     // Hämta alla parkeringsplatser
     router.get('/', (Request req) async {
-      final parkingSpaces = await parkingSpaceRepo.getAll();
-      final jsonResponse =
-          jsonEncode(parkingSpaces.map((p) => p.toJson()).toList());
-      return Response.ok(jsonResponse,
-          headers: {'Content-Type': 'application/json'});
+      try {
+        final parkingSpaces = await parkingSpaceRepo.getAll();
+        final jsonResponse =
+            jsonEncode(parkingSpaces.map((p) => p.toJson()).toList());
+        return Response.ok(jsonResponse,
+            headers: {'Content-Type': 'application/json'});
+      } catch (e) {
+        // Logga felet för felsökning
+        print('Fel vid hämtning av parkeringsplatser: $e');
+
+        // Returnera ett 500-intern serverfel med ett användarvänligt meddelande
+        return Response.internalServerError(
+            body: jsonEncode({
+              'error': 'Ett fel inträffade vid hämtning av parkeringsplatser.',
+              'details': e
+                  .toString(), // Detta kan vara användbart för utvecklare men bör tas bort i produktion
+            }),
+            headers: {'Content-Type': 'application/json'});
+      }
     });
 
     // Hämta en specifik parkeringsplats

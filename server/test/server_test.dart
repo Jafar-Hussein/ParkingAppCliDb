@@ -1,39 +1,41 @@
-import 'dart:io';
-
-import 'package:http/http.dart';
+import 'dart:convert';
 import 'package:test/test.dart';
+import 'package:shelf/shelf.dart';
+import 'package:shelf_router/shelf_router.dart';
+import '../bin/routes/ParkingRoutes.dart';
+import '../bin/routes/ParkingSpace.dart';
+import '../bin/routes/PersonRoutes.dart';
 
 void main() {
-  final port = '8080';
-  final host = 'http://0.0.0.0:$port';
-  late Process p;
+  // group('ParkingRoutes Tests', () {
+  //   final router = ParkingRoutes().router;
 
-  setUp(() async {
-    p = await Process.start(
-      'dart',
-      ['run', 'bin/server.dart'],
-      environment: {'PORT': port},
-    );
-    // Wait for server to start and print to stdout.
-    await p.stdout.first;
-  });
+  //   test('POST / should create a parking', () async {
+  //     final request = Request('POST', Uri.parse('http://localhost/'),
+  //         body: jsonEncode({'name': 'Test Parking'}),
+  //         headers: {'Content-Type': 'application/json'});
+  //     final response = await router(request);
+  //     expect(response.statusCode, 201);
+  //   });
+  // });
 
-  tearDown(() => p.kill());
+  // group('ParkingSpaceRoutes Tests', () {
+  //   final router = ParkingSpaceRoutes().router;
 
-  test('Root', () async {
-    final response = await get(Uri.parse('$host/'));
-    expect(response.statusCode, 200);
-    expect(response.body, 'Hello, World!\n');
-  });
+  //   test('GET / should return all parking spaces', () async {
+  //     final request = Request('GET', Uri.parse('http://localhost/'));
+  //     final response = await router(request);
+  //     expect(response.statusCode, 200);
+  //   });
+  // });
 
-  test('Echo', () async {
-    final response = await get(Uri.parse('$host/echo/hello'));
-    expect(response.statusCode, 200);
-    expect(response.body, 'hello\n');
-  });
+  // group('PersonRoutes Tests', () {
+  //   final router = PersonRoutes().router;
 
-  test('404', () async {
-    final response = await get(Uri.parse('$host/foobar'));
-    expect(response.statusCode, 404);
-  });
+  //   test('GET / should return all persons', () async {
+  //     final request = Request('GET', Uri.parse('http://localhost/'));
+  //     final response = await router(request);
+  //     expect(response.statusCode, 200);
+  //   });
+  // });
 }

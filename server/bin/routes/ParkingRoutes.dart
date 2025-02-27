@@ -11,12 +11,26 @@ class ParkingRoutes {
     final router = Router();
 
     // Hämta alla parkeringar
-    router.get('/', (Request req) async {
-      final parkings = await parkingRepo.getAll();
-      final jsonResponse = jsonEncode(parkings.map((p) => p.toJson()).toList());
-      return Response.ok(jsonResponse,
-          headers: {'Content-Type': 'application/json'});
-    });
+router.get('/', (Request req) async {
+  try {
+    final parkings = await parkingRepo.getAll();
+    final jsonResponse = jsonEncode(parkings.map((p) => p.toJson()).toList());
+    return Response.ok(jsonResponse, headers: {'Content-Type': 'application/json'});
+  } catch (e) {
+    // Logga felet för felsökning
+    print('Fel vid hämtning av parkeringar: $e');
+
+    // Returnera ett 500-intern serverfel med ett användarvänligt meddelande
+    return Response.internalServerError(
+      body: jsonEncode({
+        'error': 'Ett fel inträffade vid hämtning av parkeringar.',
+        'details': e.toString(), // Detta kan vara användbart för utvecklare men bör tas bort i produktion
+      }),
+      headers: {'Content-Type': 'application/json'}
+    );
+  }
+});
+
 
     // Hämta en specifik parkering
     router.get('/<parkingId>', (Request req, String parkingId) async {
