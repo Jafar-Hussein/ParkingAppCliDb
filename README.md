@@ -184,7 +184,7 @@ Hämtar alla parkeringsplatser.
 ### GET /parkingspaces/<id>
 Hämtar en specifik parkeringsplats baserat på ID.
 
-###POST /parkingspaces
+### POST /parkingspaces
 Skapar en ny parkeringsplats.
 **Request body example:**
 ```json
