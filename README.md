@@ -176,7 +176,7 @@ Uppdaterar en specifik person baserat på ID.
 ### DELETE /persons/<id>
 Tar bort en specifik person baserat på ID.
 
-##Parkeringsplatser (Parking Spaces)
+## Parkeringsplatser (Parking Spaces)
 
 ### GET /parkingspaces
 Hämtar alla parkeringsplatser.
