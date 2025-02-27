@@ -55,13 +55,13 @@ CREATE TABLE `parking` (
 git clone https://github.com/Jafar-Hussein/ParkingAppCliDb.git
 cd ParkingAppCliDb
 
--steg 2: Intsallera beroenden
+- steg 2: Intsallera beroenden
 dart pub get
 
--steg 3: Konfigurera databasen
+- steg 3: Konfigurera databasen
 Följ instruktionerna ovan för att skapa tabellerna i din MySQL-databas.
 
--steg 4: Starta app
+- steg 4: Starta app
 cd till server dart run server.dart, sedan ändra till cli mapp och dart run FirstApp.dart
 
 # API Endpoints
