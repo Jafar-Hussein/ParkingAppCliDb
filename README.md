@@ -47,3 +47,20 @@ CREATE TABLE `parking` (
    CONSTRAINT `parking_ibfk_1` FOREIGN KEY (`vehicleId`) REFERENCES `vehicle` (`id`),
    CONSTRAINT `parking_ibfk_2` FOREIGN KEY (`parkingSpaceId`) REFERENCES `parkingspace` (`id`)
 );
+
+
+## Installation
+
+- steg 1: klona repo
+git clone https://github.com/Jafar-Hussein/ParkingAppCliDb.git
+cd ParkingAppCliDb
+
+- steg 2: Intsallera beroenden
+dart pub get
+
+- steg 3: Konfigurera databasen
+Följ instruktionerna ovan för att skapa tabellerna i din MySQL-databas.
+
+- steg 4: 
+cd till server dart run server.dart, sedan ändra till cli mapp och dart run FirstApp.dart
+
