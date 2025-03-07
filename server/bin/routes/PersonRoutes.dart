@@ -11,53 +11,50 @@ class PersonRoutes {
     final router = Router();
 
     // Hämta alla personer
-   router.get('/', (Request req) async {
-  try {
-    final persons = await personRepo.getAll();
-    return Response.ok(jsonEncode(persons),
-        headers: {'Content-Type': 'application/json'});
-  } catch (e) {
-    // Logga felet för felsökning
-    print('Fel vid hämtning av personer: $e');
+    router.get('/', (Request req) async {
+      try {
+        final persons = await personRepo.getAll();
+        return Response.ok(jsonEncode(persons),
+            headers: {'Content-Type': 'application/json'});
+      } catch (e) {
+        // Logga felet för felsökning
+        print('Fel vid hämtning av personer: $e');
 
-    // Returnera ett 500-intern serverfel med ett användarvänligt meddelande
-    return Response.internalServerError(
-      body: jsonEncode({
-        'error': 'Ett fel inträffade vid hämtning av personer.',
-        'details': e.toString(), // Detta kan vara användbart för utvecklare men bör tas bort i produktion
-      }),
-      headers: {'Content-Type': 'application/json'}
-    );
-  }
-});
-
+        // Returnera ett 500-intern serverfel med ett användarvänligt meddelande
+        return Response.internalServerError(
+            body: jsonEncode({
+              'error': 'Ett fel inträffade vid hämtning av personer.',
+              'details': e
+                  .toString(), // Detta kan vara användbart för utvecklare men bör tas bort i produktion
+            }),
+            headers: {'Content-Type': 'application/json'});
+      }
+    });
 
     // Hämta en specifik person via ID
-router.get('/<id>', (Request req, String id) async {
-  try {
-    final person = await personRepo.getById(int.parse(id));
-    if (person != null) {
-      return Response.ok(jsonEncode(person.toJson()),
-          headers: {'Content-Type': 'application/json'});
-    } else {
-      return Response.notFound(
-          jsonEncode({'error': 'Person not found'}));
-    }
-  } catch (e) {
-    // Logga felet för felsökning
-    print('Fel vid hämtning av person med ID $id: $e');
+    router.get('/<id>', (Request req, String id) async {
+      try {
+        final person = await personRepo.getById(int.parse(id));
+        if (person != null) {
+          return Response.ok(jsonEncode(person.toJson()),
+              headers: {'Content-Type': 'application/json'});
+        } else {
+          return Response.notFound(jsonEncode({'error': 'Person not found'}));
+        }
+      } catch (e) {
+        // Logga felet för felsökning
+        print('Fel vid hämtning av person med ID $id: $e');
 
-    // Returnera ett 500-intern serverfel med ett användarvänligt meddelande
-    return Response.internalServerError(
-      body: jsonEncode({
-        'error': 'Ett fel inträffade vid hämtning av personen.',
-        'details': e.toString(), // Detta kan vara användbart för utvecklare men bör tas bort i produktion
-      }),
-      headers: {'Content-Type': 'application/json'}
-    );
-  }
-});
-
+        // Returnera ett 500-intern serverfel med ett användarvänligt meddelande
+        return Response.internalServerError(
+            body: jsonEncode({
+              'error': 'Ett fel inträffade vid hämtning av personen.',
+              'details': e
+                  .toString(), // Detta kan vara användbart för utvecklare men bör tas bort i produktion
+            }),
+            headers: {'Content-Type': 'application/json'});
+      }
+    });
 
     // Skapa en ny person
     router.post('/', (Request req) async {
