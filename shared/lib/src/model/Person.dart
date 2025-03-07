@@ -35,7 +35,7 @@ class Person {
     );
   }
 
-  // **Convert to JSON**
+  // konverterar till JSON
   Map<String, dynamic> toJson() {
     return {
       "id": id,
@@ -44,7 +44,7 @@ class Person {
     };
   }
 
-  // **Convert from Database Row**
+  // konverterar från Databas Row
   factory Person.fromDatabaseRow(Map<String, dynamic> json) {
     if (json['id'] == null) {
       throw Exception("Person ID is missing in database row.");
@@ -58,13 +58,13 @@ class Person {
 
     return Person(
       id: int.tryParse(json['id'].toString()) ??
-          (throw Exception("🚨 Person ID could not be converted to int.")),
+          (throw Exception("Person ID could not be converted to int.")),
       namn: json['namn'] as String,
       personnummer: json['personnummer'] as String,
     );
   }
 
-  // **Convert to Database Row**
+  // konverterar till Databas Row
   Map<String, dynamic> toDatabaseRow() {
     return {
       'id': id,

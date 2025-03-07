@@ -72,7 +72,7 @@ class Parking {
   Map<String, dynamic> toJson() {
     return {
       'id': _id,
-      'vehicle': _vehicle.toJson(), // ✅ Skicka hela objektet
+      'vehicle': _vehicle.toJson(), // Skicka hela objektet
       'parkingSpace': _parkingSpace.toJson(),
       'startTime': _startTime.toIso8601String(),
       'endTime': _endTime != null ? _endTime!.toIso8601String() : null,
@@ -95,16 +95,16 @@ class Parking {
     return Parking(
       id: json['id'] ?? 0,
 
-      // ✅ Hämta hela vehicle-objektet direkt från JSON
+      // Hämta hela vehicle-objektet direkt från JSON
       vehicle: Vehicle.fromJson(json['vehicle']),
 
-      // ✅ Hämta hela parkingSpace-objektet direkt från JSON
+      // Hämta hela parkingSpace-objektet direkt från JSON
       parkingSpace: ParkingSpace.fromJson(json['parkingSpace']),
 
       startTime: DateTime.parse(json['startTime']),
       endTime: json['endTime'] != null ? DateTime.parse(json['endTime']) : null,
 
-      // ✅ Sätt priset korrekt
+      // Sätt priset korrekt
       price: double.tryParse(json['price'].toString()) ?? 0.0,
     );
   }

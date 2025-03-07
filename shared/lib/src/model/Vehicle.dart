@@ -3,7 +3,7 @@ import 'Person.dart';
 class Vehicle {
   int id;
   String registreringsnummer;
-  String typ; // Changed from "type" to "typ"
+  String typ; 
   Person owner;
 
   Vehicle({
@@ -39,12 +39,12 @@ class Vehicle {
 
   // **Convert from JSON to `Vehicle` object**
   factory Vehicle.fromJson(Map<String, dynamic> json) {
-    // 🛠 Om ID saknas eller är null, sätt det till 0 (det genereras i databasen)
+    // Om ID saknas eller är null, sätt det till 0 (det genereras i databasen)
     int vehicleId = json.containsKey('id') && json['id'] != null
         ? int.tryParse(json['id'].toString()) ?? 0
         : 0;
 
-    // 🛠 Hantera om frontend skickar ownerId istället för owner-objekt
+    // Hantera om frontend skickar ownerId istället för owner-objekt
     Person owner;
     if (json.containsKey('ownerId') && json['ownerId'] != null) {
       owner = Person(

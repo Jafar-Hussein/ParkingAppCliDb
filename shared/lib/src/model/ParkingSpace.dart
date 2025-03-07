@@ -29,10 +29,10 @@ class ParkingSpace {
       parsedId = int.tryParse(json['id'].toString()) ?? 0;
     }
 
-    // 🛠 Kontrollera att address är en sträng
+    // Kontrollera att address är en sträng
     String parsedAddress = json['address']?.toString() ?? 'Okänd';
 
-    // 🛠 Kontrollera att pricePerHour är en giltig double
+    // Kontrollera att pricePerHour är en giltig double
     double parsedPricePerHour = 0.0;
     if (json.containsKey('pricePerHour') && json['pricePerHour'] != null) {
       try {
@@ -63,9 +63,9 @@ class ParkingSpace {
   factory ParkingSpace.fromDatabaseRow(Map<String, dynamic> row) {
     return ParkingSpace(
       id: int.tryParse(row['id'].toString()) ?? 0,
-      address: row['address']?.toString() ?? 'Okänd Adress', // 🛠 Undvik null
+      address: row['address']?.toString() ?? 'Okänd Adress', // Undvik null
       pricePerHour: double.tryParse(row['pricePerHour'].toString()) ??
-          0.0, // 🛠 Undvik null
+          0.0, // Undvik null
     );
   }
 
