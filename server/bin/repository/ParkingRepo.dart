@@ -13,13 +13,13 @@ class ParkingRepo implements Repository<Parking> {
   static ParkingRepo get instance => _instance;
 
   /// **Lägger till en parkering i databasen och returnerar det skapade objektet.**
-  @override
   Future<Parking> create(Parking parking) async {
     var conn = await Database.getConnection();
     try {
-      var result = await conn.execute(
+      // Utför INSERT utan RETURNING
+      await conn.execute(
         'INSERT INTO parking (vehicleId, parkingspaceId, startTime, endTime, price) '
-        'VALUES (:vehicleId, :parkingspaceId, :startTime, :endTime, :price) RETURNING id',
+        'VALUES (:vehicleId, :parkingspaceId, :startTime, :endTime, :price)',
         {
           'vehicleId': parking.vehicle.id,
           'parkingspaceId': parking.parkingSpace.id,
@@ -31,9 +31,12 @@ class ParkingRepo implements Repository<Parking> {
         },
       );
 
-      int newId =
-          int.tryParse(result.rows.first.colByName('id')?.toString() ?? '0') ??
-              0;
+      // Hämta det senast skapade ID:t med MySQLs LAST_INSERT_ID()
+      var result = await conn.execute('SELECT LAST_INSERT_ID() as id');
+
+      int newId = int.parse(result.rows.first.colByName('id')!);
+
+      // Hämta det skapade objektet
       return await getById(newId) ??
           (throw Exception("Fel: Kunde inte hämta nyskapad parkering"));
     } catch (e) {
