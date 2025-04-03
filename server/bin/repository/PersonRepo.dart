@@ -148,28 +148,29 @@ class PersonRepo implements Repository<Person> {
   Future<Person> findByName(String name) async {
     var conn = await Database.getConnection();
     try {
-      if (name == null) {
-        // This check is redundant in null-safe Dart. You might want to remove it or handle it differently.
-        throw Exception('Ingen person hittades med namnet: $name');
-      }
       var results = await conn
           .execute('SELECT * FROM person WHERE namn = :namn', {'namn': name});
 
-      if (results.rows.isNotEmpty) {
-        var person = Person.fromDatabaseRow({
-          'id': results.rows.first.colByName('id'),
-          'namn': results.rows.first.colByName('namn'),
-          'personnummer': results.rows.first.colByName('personnummer'),
-        });
-
-        print(
-            'Hämtad person: ID ${person.id}, Namn: ${person.namn}, Personnummer: ${person.personnummer}');
-        return person;
+      if (results.rows.isEmpty) {
+        // If no person is found, throw an exception.
+        throw Exception('Ingen person hittades med namnet: $name');
       }
-      throw Exception('Ingen person hittades med namnet: $name');
+
+      // Assuming the row data matches the expected structure and columns.
+      var row = results.rows.first;
+      var person = Person.fromDatabaseRow({
+        'id': row.colByName('id'),
+        'namn': row.colByName('namn'),
+        'personnummer': row.colByName('personnummer'),
+      });
+
+      print(
+          'Hämtad person: ID ${person.id}, Namn: ${person.namn}, Personnummer: ${person.personnummer}');
+      return person;
     } catch (e) {
+      // Catch any kind of exceptions and handle them, possibly logging or rethrowing.
       print('Fel: Kunde inte hämta person med namnet $name → $e');
-      return Future.error('Misslyckades med att hämta person.');
+      throw Exception('Misslyckades med att hämta person: $e');
     } finally {
       await conn.close();
     }
