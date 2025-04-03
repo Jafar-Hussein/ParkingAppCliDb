@@ -144,4 +144,34 @@ class PersonRepo implements Repository<Person> {
       await conn.close();
     }
   }
+
+  Future<Person> findByName(String name) async {
+    var conn = await Database.getConnection();
+    try {
+      if (name == null) {
+        // This check is redundant in null-safe Dart. You might want to remove it or handle it differently.
+        throw Exception('Ingen person hittades med namnet: $name');
+      }
+      var results = await conn
+          .execute('SELECT * FROM person WHERE namn = :namn', {'namn': name});
+
+      if (results.rows.isNotEmpty) {
+        var person = Person.fromDatabaseRow({
+          'id': results.rows.first.colByName('id'),
+          'namn': results.rows.first.colByName('namn'),
+          'personnummer': results.rows.first.colByName('personnummer'),
+        });
+
+        print(
+            'Hämtad person: ID ${person.id}, Namn: ${person.namn}, Personnummer: ${person.personnummer}');
+        return person;
+      }
+      throw Exception('Ingen person hittades med namnet: $name');
+    } catch (e) {
+      print('Fel: Kunde inte hämta person med namnet $name → $e');
+      return Future.error('Misslyckades med att hämta person.');
+    } finally {
+      await conn.close();
+    }
+  }
 }
