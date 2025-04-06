@@ -30,6 +30,23 @@ class PersonRoutes {
             headers: {'Content-Type': 'application/json'});
       }
     });
+    // Hämta person baserat på namn
+    router.get('/namn/<namn>', (Request req, String namn) async {
+      try {
+        final person = await personRepo.findByName(namn);
+        if (person != null) {
+          return Response.ok(jsonEncode(person.toJson()),
+              headers: {'Content-Type': 'application/json'});
+        } else {
+          return Response.notFound(jsonEncode({'error': 'Person not found'}));
+        }
+      } catch (e) {
+        return Response.internalServerError(
+          body: jsonEncode({'error': 'Ett fel inträffade: $e'}),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+    });
 
     // Hämta en specifik person via ID
     router.get('/<id>', (Request req, String id) async {

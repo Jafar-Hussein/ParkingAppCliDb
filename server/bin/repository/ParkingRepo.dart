@@ -119,29 +119,27 @@ class ParkingRepo implements Repository<Parking> {
       print("Uppdaterar parkering ID $id");
       print("DEBUG: Ny data → ${jsonEncode(parking.toJson())}");
 
-      // Kontrollera om parkeringen existerar innan vi uppdaterar
+      // Kontrollera om parkeringen existerar
       var checkExist = await conn.execute(
         'SELECT COUNT(*) as count FROM parking WHERE id = :id',
         {'id': id},
       );
 
-      int count = checkExist.rows.first.colByName('count') != null
-          ? int.parse(checkExist.rows.first.colByName('count')!)
-          : 0;
-
+      int count =
+          int.tryParse(checkExist.rows.first.colByName('count') ?? '0') ?? 0;
       if (count == 0) {
         throw Exception("Parkering med ID $id hittades inte!");
       }
 
-      // 🔍 Kontrollera om alla värden redan är identiska i databasen
+      // Kontrollera om datan är identisk
       var existingRow = await getById(id);
       if (existingRow != null &&
           existingRow.toJson().toString() == parking.toJson().toString()) {
-        print("Ingen uppdatering gjord eftersom värdena är identiska.");
-        return existingRow; // Returnera befintlig data utan att kasta fel
+        print("Ingen uppdatering behövs – värdena är identiska.");
+        return existingRow;
       }
 
-      // 🏷 Hämta pris per timme för parkering
+      // Hämta pris per timme
       var result = await conn.execute(
         'SELECT pricePerHour FROM parkingspace WHERE id = :id',
         {'id': parking.parkingSpace.id},
@@ -155,18 +153,17 @@ class ParkingRepo implements Repository<Parking> {
       double pricePerHour =
           double.parse(result.rows.first.colByName('pricePerHour')!);
 
-      // 🏷 Beräkna uppdaterad kostnad
+      // Räkna ut pris om endTime finns
       double updatedPrice = parking.endTime != null
           ? (parking.endTime!.difference(parking.startTime).inMinutes / 60) *
               pricePerHour
           : 0.0;
 
-      // 🏷 Format datum för MySQL
       String formattedStartTime = _formatDateTime(parking.startTime);
       String? formattedEndTime =
           parking.endTime != null ? _formatDateTime(parking.endTime!) : null;
 
-      // Kör UPDATE-frågan
+      // Kör UPDATE
       var updateResult = await conn.execute(
         '''
       UPDATE parking 
@@ -187,29 +184,18 @@ class ParkingRepo implements Repository<Parking> {
         },
       );
 
-      // Kolla om UPDATE påverkade någon rad
       if (updateResult.numOfRows == 0) {
-        var existingRowAfter = await getById(id);
-        if (existingRowAfter != null &&
-            existingRowAfter.toJson().toString() ==
-                parking.toJson().toString()) {
-          print("Ingen ändring behövdes, värdena var redan samma.");
-          return existingRowAfter;
-        }
-        throw Exception("Uppdatering misslyckades, ingen rad ändrades!");
+        print(
+            "Uppdateringen kördes men inga rader ändrades (möjligen samma data).");
       }
 
-      print("Parkering uppdaterad! ID $id, Nytt pris: $updatedPrice kr");
-
-      // Hämta parkeringen efter uppdatering och logga den
-      var updatedParking = await getById(id);
-      if (updatedParking == null) {
-        throw Exception("Parkeringen kunde inte hittas efter uppdatering!");
+      var updated = await getById(id);
+      if (updated == null) {
+        throw Exception("Kunde inte hämta uppdaterad parkering.");
       }
 
-      print(
-          "DEBUG: Hämtade parkering efter update: ${jsonEncode(updatedParking.toJson())}");
-      return updatedParking;
+      print("Parkering uppdaterad! ID $id, Pris: $updatedPrice kr");
+      return updated;
     } catch (e, stacktrace) {
       print("Fel vid uppdatering i backend: $e");
       print(stacktrace);

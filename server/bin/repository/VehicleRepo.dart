@@ -138,7 +138,6 @@ class VehicleRepo implements Repository<Vehicle> {
   Future<Vehicle> update(int id, Vehicle vehicle) async {
     var conn = await Database.getConnection();
     try {
-
       await conn.execute(
         '''
       UPDATE vehicle 
@@ -207,6 +206,50 @@ class VehicleRepo implements Repository<Vehicle> {
     } catch (e) {
       print('Fel: Kunde inte radera fordon → $e');
       throw Exception('Kunde inte radera fordon.');
+    } finally {
+      await conn.close();
+    }
+  }
+
+  /// Hämtar alla fordon som tillhör en person med ett specifikt namn
+  Future<List<Vehicle>> getByOwnerName(String namn) async {
+    var conn = await Database.getConnection();
+    List<Vehicle> vehicles = [];
+    try {
+      var results = await conn.execute(
+        '''
+      SELECT vehicle.id, vehicle.registreringsnummer, vehicle.typ, 
+             person.id AS ownerId, person.namn AS ownerNamn, person.personnummer
+      FROM vehicle
+      INNER JOIN person ON vehicle.ownerId = person.id
+      WHERE person.namn = :namn
+      ''',
+        {'namn': namn},
+      );
+
+      for (final row in results.rows) {
+        int vehicleId = int.tryParse(row.colByName('id').toString()) ?? 0;
+        int ownerId = int.tryParse(row.colByName('ownerId').toString()) ?? 0;
+
+        Map<String, dynamic> rowMap = {
+          'id': vehicleId,
+          'registreringsnummer': row.colByName('registreringsnummer'),
+          'typ': row.colByName('typ'),
+          'ownerId': ownerId,
+          'owner': {
+            'id': ownerId,
+            'namn': row.colByName('ownerNamn'),
+            'personnummer': row.colByName('personnummer'),
+          }
+        };
+        vehicles.add(Vehicle.fromDatabaseRow(rowMap));
+      }
+
+      print("Hämtade ${vehicles.length} fordon för ägare: $namn");
+      return vehicles;
+    } catch (e) {
+      print('Fel: Kunde inte hämta fordon för ägare "$namn" → $e');
+      return [];
     } finally {
       await conn.close();
     }

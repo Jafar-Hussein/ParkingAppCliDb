@@ -32,6 +32,22 @@ class VehicleRoutes {
             headers: {'Content-Type': 'application/json'});
       }
     });
+// Hämta fordon baserat på ägarens namn
+    router.get('/owner/<namn>', (Request req, String namn) async {
+      try {
+        final vehicles = await vehicleRepo.getByOwnerName(namn);
+        final jsonResponse =
+            jsonEncode(vehicles.map((v) => v.toJson()).toList());
+
+        return Response.ok(jsonResponse,
+            headers: {'Content-Type': 'application/json'});
+      } catch (e) {
+        return Response.internalServerError(
+            body: jsonEncode(
+                {'error': 'Kunde inte hämta fordon för namn: $namn'}),
+            headers: {'Content-Type': 'application/json'});
+      }
+    });
 
     // Hämta ett specifikt fordon
     router.get('/<vehicleId>', (Request req, String vehicleId) async {
